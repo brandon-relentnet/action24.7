@@ -14,11 +14,10 @@ const client = new SquareClient({
 
 export async function GET() {
     try {
-        const response = await client.catalog.list({});
-        console.log('response', response);
-
-        //const safeResult = response.result ?? [];
-        return NextResponse.json(response);
+        const response = await client.catalog.list({
+            includeRelatedObjects: true,
+        });
+        return NextResponse.json(response.data);
     } catch (error) {
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch catalog' }, { status: 500 });
