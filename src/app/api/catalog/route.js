@@ -7,10 +7,13 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { SquareClient, SquareEnvironment } from 'square';
+import ENV_VARS from '@/lib/env';
 
 const client = new SquareClient({
-    environment: SquareEnvironment.Production,
-    token: process.env.SQUARE_ACCESS_TOKEN,
+    environment: ENV_VARS.SQUARE_ENVIRONMENT === 'Production'
+        ? SquareEnvironment.Production
+        : SquareEnvironment.Sandbox,
+    token: ENV_VARS.SQUARE_ACCESS_TOKEN,
 });
 
 export async function GET() {
