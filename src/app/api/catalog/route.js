@@ -1,4 +1,4 @@
-// File: src/app/api/catalog-full/route.js
+// Ensure BigInts are serialized as strings.
 BigInt.prototype.toJSON = function () {
     return this.toString();
 };
@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { SquareClient, SquareEnvironment } from 'square';
 
 const client = new SquareClient({
-    environment: SquareEnvironment.Production, // or Sandbox if needed
+    environment: SquareEnvironment.Production,
     token: process.env.SQUARE_ACCESS_TOKEN,
 });
 
@@ -19,44 +19,44 @@ export async function GET() {
         const catalogResponse = await client.catalog.list({
             includeRelatedObjects: true,
         });
-        // The actual catalog items are in catalogResponse.result.objects.
-        const catalogItems = (catalogResponse.data) || [];
-        // Collect all object IDs from catalog items.
-        const objectIds = catalogItems.map(item => item.id);
+        const catalogItems = catalogResponse.data || [];
 
-        // Use a batch call to retrieve full details along with related objects.
+        // Extract all object IDs from the catalog items.
+        const objectIds = catalogItems.map(item => item.id);
+        if (!objectIds.length) {
+            return NextResponse.json({ objects: [] });
+        }
+
+        // Batch retrieve catalog objects along with their related objects.
         const batchResponse = await client.catalog.batchGet({
-            objectIds: objectIds,
+            objectIds,
             includeRelatedObjects: true,
         });
-        const batchObjects = (batchResponse.objects) || [];
-        const relatedObjects = (batchResponse.relatedObjects) || [];
-
-        //console.log("Batch Objects:", batchObjects);
-        //console.log("Related Objects:", relatedObjects);
+        // Access the objects and related objects from the batch response.
+        const relatedObjects = batchResponse.relatedObjects || [];
 
         // Build a mapping from image object ID to its URL.
-        // Note: Use snake_case: the image objects have an "image_data" property.
-        const imageMap = {};
-        relatedObjects.forEach(obj => {
+        const imageMap = relatedObjects.reduce((map, obj) => {
+            // Use the camelCase properties (imageData) as returned by the SDK.
             if (obj.type === "IMAGE" && obj.imageData && obj.id) {
-                imageMap[obj.id] = obj.imageData.url;
+                map[obj.id] = obj.imageData.url;
             }
-        });
-        //console.log("Image Map:", imageMap);
+            return map;
+        }, {});
 
-        // Enrich each catalog item with its first image URL.
-        // Note: Catalog items contain their image IDs in "item_data.image_ids"
-        console.log("Catalog Items:", catalogItems);
+        // Enrich each catalog item with its first image URL (if any).
         const enrichedItems = catalogItems.map(item => {
-            const imageIds = item.itemData ? item.itemData.imageIds : [];
-            const imageUrl = (imageIds && imageIds.length > 0) ? imageMap[imageIds[0]] || null : null;
-            return { ...item, imageUrl: imageUrl };
+            const imageIds = item.itemData?.imageIds || [];
+            const imageUrl = imageIds.length ? imageMap[imageIds[0]] || null : null;
+            return { ...item, imageUrl };
         });
 
         return NextResponse.json({ objects: enrichedItems });
     } catch (error) {
         console.error("Error fetching enriched catalog:", error);
-        return NextResponse.json({ error: 'Failed to fetch enriched catalog' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Failed to fetch enriched catalog' },
+            { status: 500 }
+        );
     }
 }
