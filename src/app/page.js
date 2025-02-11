@@ -1,5 +1,6 @@
 "use client";
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
+import { submitPayment } from "./actions/actions";
 import ENV_VARS from '@/lib/env';
 
 export default function Home() {
@@ -14,7 +15,8 @@ export default function Home() {
       applicationId={SQUARE_APPLICATION_ID}
       locationId={SQUARE_LOCATION_ID}
       cardTokenizeResponseReceived={async (token) => {
-        console.log(token);
+        const result = await submitPayment(token.token);
+        console.log(result);
       }}
     >
       <CreditCard />
