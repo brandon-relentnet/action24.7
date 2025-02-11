@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useCart } from '@/app/context/CartContext';
 
-// Helper: extract the product ID from a slug formatted as "product-name-<id>"
+// Helper: extract the product ID from a slug like "product-name-<id>"
 function extractId(slugAndId) {
     const parts = slugAndId.split('-');
     return parts[parts.length - 1];
@@ -13,6 +14,7 @@ export default function ProductPage() {
     const { slugAndId } = useParams();
     const [loading, setLoading] = useState(true);
     const [product, setProduct] = useState(null);
+    const { addToCart } = useCart();
 
     useEffect(() => {
         async function fetchProduct() {
@@ -33,9 +35,7 @@ export default function ProductPage() {
     if (loading) return <div>Loading product details...</div>;
     if (!product) return <div>Product not found</div>;
 
-    // Use camelCase keys as returned by your API.
     const variation = product.itemData?.variations?.[0];
-    // Try to get the price from priceMoney (or fallback to defaultUnitCost)
     const priceMoney =
         variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
 
@@ -51,9 +51,8 @@ export default function ProductPage() {
             <p>
                 Price: {priceMoney ? priceMoney.amount / 100 : 'N/A'} {priceMoney?.currency || ''}
             </p>
-            <button onClick={() => alert("Buy functionality to be added")}>
-                Buy Now
-            </button>
+            <button onClick={() => (addToCart(product), console.log('added to cart'))}>Add to Cart</button>
+            {/* Optionally, include a Buy Now button to bypass the cart if desired */}
         </div>
     );
 }

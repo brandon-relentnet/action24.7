@@ -23,14 +23,14 @@ const client = new SquareClient({
     token: token,
 });
 
-export async function submitPayment(sourceId) {
+export async function submitPayment(sourceId, checkoutData) {
     try {
         const response = await client.payments.create({
             idempotencyKey: randomUUID(),
             sourceId,
             amountMoney: {
-                currency: "USD",
-                amount: BigInt(100),
+                currency: checkoutData.currency,
+                amount: BigInt(checkoutData.amount),
             },
         });
         return response;
