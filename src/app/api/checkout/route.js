@@ -4,24 +4,28 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { SquareClient, SquareEnvironment } from 'square';
 import crypto from 'crypto';
-import ENV_VARS from '@/lib/env'; // Assuming you have a module for your env vars
+import ENV_VARS from '@/lib/env';
+
+const { SQUARE_ENVIRONMENT } = ENV_VARS;
+const token = SQUARE_ENVIRONMENT === 'Production'
+    ? process.env.PRODUCTION_SQUARE_ACCESS_TOKEN
+    : process.env.SANDBOX_SQUARE_ACCESS_TOKEN;
 
 // Initialize the Square client.
 const client = new SquareClient({
     environment:
-        ENV_VARS.SQUARE_ENVIRONMENT === 'Production'
+        SQUARE_ENVIRONMENT === 'Production'
             ? SquareEnvironment.Production
             : SquareEnvironment.Sandbox,
-    token: ENV_VARS.SQUARE_ACCESS_TOKEN,
+    token: token,
 });
 
 export async function POST(request) {
     try {
-        // Parse the incoming JSON payload.
         const { itemId, variationId, name, price, currency, quantity } =
             await request.json();
 
-        // Basic input validation.
+        // Validate required product details.
         if (!name || !price || !currency || !quantity) {
             return NextResponse.json(
                 { error: 'Missing required product details' },
@@ -42,9 +46,6 @@ export async function POST(request) {
         const idempotencyKey = crypto.randomUUID();
 
         // Construct the order request.
-        // Here we only pass a simple line item with a name, quantity, and price.
-        // In a production application you might include additional fields such as variationId,
-        // modifiers, taxes, etc.
         const orderRequest = {
             order: {
                 locationId,
@@ -62,8 +63,9 @@ export async function POST(request) {
             idempotencyKey,
         };
 
-        // Create the checkout session using the Square Checkout API.
-        const checkoutResponse = await client.checkoutApi.createCheckout(
+        // Create the checkout session.
+        // Use client.checkout (instead of client.checkoutApi) if checkoutApi is undefined.
+        const checkoutResponse = await client.checkout.createCheckout(
             locationId,
             orderRequest
         );
@@ -77,7 +79,6 @@ export async function POST(request) {
             );
         }
 
-        // Return the checkout URL to the client.
         return NextResponse.json({ checkoutUrl });
     } catch (error) {
         console.error("Checkout error:", error);

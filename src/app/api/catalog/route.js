@@ -9,11 +9,18 @@ import { NextResponse } from 'next/server';
 import { SquareClient, SquareEnvironment } from 'square';
 import ENV_VARS from '@/lib/env';
 
+const { SQUARE_ENVIRONMENT } = ENV_VARS;
+const token = SQUARE_ENVIRONMENT === 'Production'
+    ? process.env.PRODUCTION_SQUARE_ACCESS_TOKEN
+    : process.env.SANDBOX_SQUARE_ACCESS_TOKEN;
+
+// Initialize the Square client.
 const client = new SquareClient({
-    environment: ENV_VARS.SQUARE_ENVIRONMENT === 'Production'
-        ? SquareEnvironment.Production
-        : SquareEnvironment.Sandbox,
-    token: ENV_VARS.SQUARE_ACCESS_TOKEN,
+    environment:
+        SQUARE_ENVIRONMENT === 'Production'
+            ? SquareEnvironment.Production
+            : SquareEnvironment.Sandbox,
+    token: token,
 });
 
 export async function GET() {
