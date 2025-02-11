@@ -20,11 +20,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-zinc-950 text-zinc-50">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <CartProvider>
           <Navbar />
-          <div className="pt-30">
+          <div className="pt-30 container mx-auto">
             {children}
           </div>
           
