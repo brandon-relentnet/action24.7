@@ -25,7 +25,7 @@ const client = new SquareClient({
 
 export async function submitPayment(sourceId) {
     try {
-        const { result } = await client.payments.create({
+        const response = await client.payments.create({
             idempotencyKey: randomUUID(),
             sourceId,
             amountMoney: {
@@ -33,7 +33,7 @@ export async function submitPayment(sourceId) {
                 amount: BigInt(100),
             },
         });
-        return result;
+        return response;
     } catch (error) {
         console.log(error);
     }
