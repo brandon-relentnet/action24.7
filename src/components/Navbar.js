@@ -1,19 +1,11 @@
-import Link from 'next/link';
+import NavbarItem from "./NavbarItem";
 
 export default function Navbar() {
     return (
-        <nav className='fixed top-0 left-0 w-full bg-gray-800 text-white p-4'>
-            <ul>
-                <li>
-                    <Link href="/">Home</Link>
-                </li>
-                <li>
-                    <Link href="/catalog">Catalog</Link>
-                </li>
-                <li>
-                    <Link href="/cart">Cart</Link>
-                </li>
-            </ul>
+        <nav className='fixed h-16 flex items-center justify-center space-x-4 top-0 left-0 w-full bg-zinc-900 text-white'>
+            <NavbarItem href='/' label='Home' />
+            <NavbarItem href='/catalog' label='Shop' />
+            <NavbarItem href='/cart' label='Cart' />
         </nav>
     );
 }
