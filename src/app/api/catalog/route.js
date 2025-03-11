@@ -29,7 +29,10 @@ export async function GET() {
         const catalogResponse = await client.catalog.list({
             includeRelatedObjects: true,
         });
-        const catalogItems = catalogResponse.data || [];
+        const catalogItems = (catalogResponse.data || []).filter(item => item.type === 'ITEM');
+        const catalogCategories = (catalogResponse.data || []).filter(item => item.type === 'CATEGORY');
+        console.log('Fetched catalog items:', catalogItems);
+        console.log('Fetched catalog categories:', catalogCategories.map(item => item.categoryData?.name));
 
         // Extract all object IDs from the catalog items.
         const objectIds = catalogItems.map(item => item.id);
@@ -61,7 +64,10 @@ export async function GET() {
             return { ...item, imageUrl };
         });
 
-        return NextResponse.json({ objects: enrichedItems });
+        return NextResponse.json({
+            objects: enrichedItems, categories
+                : catalogCategories
+        });
     } catch (error) {
         console.error("Error fetching enriched catalog:", error);
         return NextResponse.json(
