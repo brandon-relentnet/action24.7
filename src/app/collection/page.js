@@ -50,7 +50,7 @@ export default function CatalogPage() {
     );
 
     return (
-        <div className="min-h-screen px-6 py-12 md:px-12 lg:px-16">
+        <div className="min-h-screen px-6 py-12 md:px-12 lg:px-16 max-w-[1920px] mx-auto">
             <h1 className="text-3xl md:text-4xl font-light tracking-wider uppercase mb-12 text-center">Collection</h1>
 
             {/* Category filter buttons */}
@@ -93,7 +93,7 @@ export default function CatalogPage() {
                 {filteredCatalog.map((item) => {
                     const name = item.itemData?.name || 'Unnamed Item';
                     const slug = slugify(name);
-                    const href = `/catalog/${slug}-${item.id}`;
+                    const href = `/collection/${slug}-${item.id}`;
                     const price = item.itemData?.variations?.[0]?.itemVariationData?.priceMoney?.amount / 100 || 'N/A';
 
                     return (
