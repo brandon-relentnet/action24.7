@@ -14,10 +14,14 @@ export default function ProductPage() {
     const { slugAndId } = useParams();
     const [loading, setLoading] = useState(true);
     const [product, setProduct] = useState(null);
-    const { addToCart } = useCart();
+    const { addToCart, cartItems } = useCart();
     const [openAttribute, setOpenAttribute] = useState(null);
     const detailsRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [addingToCart, setAddingToCart] = useState(false);
+
+    // Check if product is already in cart
+    const isInCart = product && cartItems.some(item => item.id === product.id);
 
     // Scroll to details section
     const scrollToDetails = () => {
@@ -38,6 +42,22 @@ export default function ProductPage() {
     // Toggle fullscreen image
     const toggleFullscreen = () => {
         setIsFullscreen(!isFullscreen);
+    };
+
+    // Handle Add to Cart with visual feedback and redirect
+    const handleAddToCart = () => {
+        if (isInCart || addingToCart) return;
+
+        setAddingToCart(true);
+
+        // Add with slight delay to show feedback
+        setTimeout(() => {
+            if (product) {
+                addToCart(product);
+                console.log('added to cart');
+                window.location.href = '/cart';
+            }
+        }, 300);
     };
 
     // Close fullscreen on escape key press
@@ -189,10 +209,21 @@ export default function ProductPage() {
 
                         <div className="mt-auto space-y-4">
                             <button
-                                onClick={() => (addToCart(product), console.log('added to cart'))}
-                                className="w-full py-3 bg-black text-white uppercase tracking-wider text-sm font-light transition-colors hover:bg-gray-900"
+                                onClick={handleAddToCart}
+                                disabled={isInCart || addingToCart}
+                                className={`w-full py-3 uppercase tracking-wider text-sm font-light transition-all duration-300 ${addingToCart
+                                        ? "bg-gray-700 text-white"
+                                        : isInCart
+                                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                            : "bg-black text-white hover:bg-gray-900"
+                                    }`}
                             >
-                                Add to Cart
+                                {addingToCart
+                                    ? "Adding to Cart..."
+                                    : isInCart
+                                        ? "Already in Cart"
+                                        : "Add to Cart"
+                                }
                             </button>
 
                             <button
