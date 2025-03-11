@@ -5,14 +5,22 @@ import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { submitPayment } from '@/app/actions/actions';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import ENV_VARS from '@/lib/env';
+
+let envLocationId;
+let envApplicationId;
+
+if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
+    envLocationId = process.env.NEXT_PUBLIC_PRODUCTION_SQUARE_LOCATION_ID;
+    envApplicationId = process.env.NEXT_PUBLIC_PRODUCTION_SQUARE_APPLICATION_ID;
+} else {
+    envLocationId = process.env.NEXT_PUBLIC_SANDBOX_SQUARE_LOCATION_ID;
+    envApplicationId = process.env.NEXT_PUBLIC_SANDBOX_SQUARE_APPLICATION_ID;
+}
 
 export default function CheckoutPage() {
     const { cartItems, clearCart } = useCart();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-
-    const { SQUARE_APPLICATION_ID, SQUARE_LOCATION_ID } = ENV_VARS;
 
     // Calculate the total amount (in cents).
     const totalAmount = cartItems.reduce((sum, item) => {
@@ -50,8 +58,8 @@ export default function CheckoutPage() {
             <h1>Checkout</h1>
             <p>Total: ${(totalAmount / 100).toFixed(2)} USD</p>
             <PaymentForm
-                applicationId={SQUARE_APPLICATION_ID}
-                locationId={SQUARE_LOCATION_ID}
+                applicationId={envApplicationId}
+                locationId={envLocationId}
                 cardTokenizeResponseReceived={handlePayment}
             >
                 <CreditCard />

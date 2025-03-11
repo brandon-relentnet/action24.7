@@ -1,4 +1,5 @@
 "use server";
+
 import { SquareClient, SquareEnvironment } from "square";
 import { randomUUID } from "crypto";
 
@@ -7,17 +8,14 @@ BigInt.prototype.toJSON = function () {
     return Number(this);
 };
 
-import ENV_VARS from '@/lib/env';
-
-const { SQUARE_ENVIRONMENT } = ENV_VARS;
-const token = SQUARE_ENVIRONMENT === 'Production'
+const token = process.env.APP_ENV === 'production'
     ? process.env.PRODUCTION_SQUARE_ACCESS_TOKEN
     : process.env.SANDBOX_SQUARE_ACCESS_TOKEN;
 
 // Initialize the Square client.
 const client = new SquareClient({
     environment:
-        SQUARE_ENVIRONMENT === 'Production'
+        process.env.APP_ENV === 'production'
             ? SquareEnvironment.Production
             : SquareEnvironment.Sandbox,
     token: token,

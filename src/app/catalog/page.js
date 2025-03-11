@@ -35,8 +35,6 @@ export default function CatalogPage() {
         fetchCatalog();
     }, []);
 
-    console.log(categories);
-
     const filteredCatalog = selectedCategory === 'all'
         ? catalog
         : catalog.filter(item =>
