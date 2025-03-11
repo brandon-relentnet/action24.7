@@ -7,17 +7,16 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { SquareClient, SquareEnvironment } from 'square';
-import ENV_VARS from '@/lib/env';
 
-const { SQUARE_ENVIRONMENT } = ENV_VARS;
-const token = SQUARE_ENVIRONMENT === 'Production'
+const token = process.env.APP_ENV === 'production'
     ? process.env.PRODUCTION_SQUARE_ACCESS_TOKEN
     : process.env.SANDBOX_SQUARE_ACCESS_TOKEN;
 
+    console.log('token', token);
 // Initialize the Square client.
 const client = new SquareClient({
     environment:
-        SQUARE_ENVIRONMENT === 'Production'
+        process.env.APP_ENV === 'production'
             ? SquareEnvironment.Production
             : SquareEnvironment.Sandbox,
     token: token,
@@ -31,8 +30,6 @@ export async function GET() {
         });
         const catalogItems = (catalogResponse.data || []).filter(item => item.type === 'ITEM');
         const catalogCategories = (catalogResponse.data || []).filter(item => item.type === 'CATEGORY');
-        console.log('Fetched catalog items:', catalogItems);
-        console.log('Fetched catalog categories:', catalogCategories.map(item => item.categoryData?.name));
 
         // Extract all object IDs from the catalog items.
         const objectIds = catalogItems.map(item => item.id);
