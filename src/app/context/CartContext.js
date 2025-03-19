@@ -85,11 +85,6 @@ export function CartProvider({ children }) {
         return total + (item.quantity || 1);
     }, 0);
 
-    // For debugging
-    useEffect(() => {
-        console.log("Current cart state:", cartItems);
-    }, [cartItems]);
-
     const contextValue = {
         cartItems,
         addToCart,

@@ -1,9 +1,9 @@
 'use client';
 
-import { useCart } from '@/app/context/CartContext';
+import { useSquareOrder } from '@/app/context/SquareOrderContext';
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { submitPayment } from '@/app/actions/actions';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -19,7 +19,7 @@ if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
 }
 
 export default function CheckoutPage() {
-    const { cartItems, clearCart } = useCart();
+    const { orderId, orderItems, clearOrder, updateItemQuantity, removeItemFromOrder } = useSquareOrder(); 
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -33,13 +33,19 @@ export default function CheckoutPage() {
         country: 'US'
     });
 
-    // Calculate the total amount (in cents)
-    const totalAmount = cartItems.reduce((sum, item) => {
+    // Calculate the subtotal amount (in cents)
+    const subTotal = orderItems.reduce((sum, item) => {
         const variation = item.itemData?.variations?.[0];
         const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
         const itemPrice = priceMoney ? Number(priceMoney.amount) : 0;
         return sum + (itemPrice * (item.quantity || 1));
     }, 0);
+
+    // Calculate the tax total
+    const taxTotal = subTotal * 0.0975;
+
+    // Calculate the total amount (subtotal + tax)
+    const totalAmount = subTotal + taxTotal;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -52,24 +58,18 @@ export default function CheckoutPage() {
     const handlePayment = async (token) => {
         setLoading(true);
         try {
+            // Use the existing orderId from context
             const checkoutData = {
+                orderId, // Pass this instead of creating a new order
                 amount: totalAmount,
                 currency: "USD",
                 customerDetails: formData
             };
 
-            // Store the order information in localStorage before clearing the cart
-            const orderInfo = {
-                items: cartItems,
-                total: totalAmount,
-                customerDetails: formData,
-                date: new Date().toISOString()
-            };
-            localStorage.setItem('completedOrder', JSON.stringify(orderInfo));
-
             const result = await submitPayment(token.token, checkoutData);
             if (result && result.payment) {
-                clearCart();
+                // Clear the order on successful payment
+                await clearOrder();
                 router.push("/checkout-confirmation");
             } else {
                 alert("Payment failed");
@@ -87,7 +87,7 @@ export default function CheckoutPage() {
             <div className="max-w-4xl mx-auto">
                 <h1 className="text-3xl font-light tracking-wider uppercase mb-12 text-center">Checkout</h1>
 
-                {cartItems.length === 0 ? (
+                {orderItems.length === 0 ? (
                     <div className="text-center py-12">
                         <p className="text-gray-600 mb-8">Your shopping bag is empty.</p>
                         <Link
@@ -227,7 +227,7 @@ export default function CheckoutPage() {
                             <h2 className="text-xl font-light tracking-wide mb-6 uppercase">Order Summary</h2>
 
                             <div className="space-y-4 mb-8">
-                                {cartItems.map(item => {
+                                {orderItems.map(item => {
                                     const variation = item.itemData?.variations?.[0];
                                     const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
                                     const price = priceMoney ? (priceMoney.amount / 100).toFixed(2) : 'N/A';
@@ -266,11 +266,15 @@ export default function CheckoutPage() {
                             <div className="border-t border-gray-200 pt-4 mb-8">
                                 <div className="flex justify-between mb-2">
                                     <span className="font-light">Subtotal</span>
-                                    <span className="font-light">${(totalAmount / 100).toFixed(2)}</span>
+                                    <span className="font-light">${(subTotal / 100).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between mb-2">
                                     <span className="font-light">Shipping</span>
                                     <span className="font-light">Free</span>
+                                </div>
+                                <div className="flex justify-between mb-2">
+                                    <span className="font-light">Taxes (9.75%)</span>
+                                    <span className="font-light">${(taxTotal / 100).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-lg mt-4 pt-4 border-t border-gray-200">
                                     <span className="font-light">Total</span>
@@ -289,7 +293,7 @@ export default function CheckoutPage() {
                                         countryCode: 'US',
                                         currencyCode: 'USD',
                                         total: {
-                                            amount: (totalAmount / 100).toFixed(2),
+                                            amount: totalAmount, // totalAmount is already in cents (an integer)
                                             label: 'Total',
                                         }
                                     })}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { useCart } from '@/app/context/CartContext';
+import { useSquareOrder } from '@/app/context/SquareOrderContext'; 
 import Link from 'next/link';
 
 function extractId(slugAndId) {
@@ -14,14 +14,32 @@ export default function ProductPage() {
     const { slugAndId } = useParams();
     const [loading, setLoading] = useState(true);
     const [product, setProduct] = useState(null);
-    const { addToCart, cartItems } = useCart();
+    const { addItemToOrder, orderItems, isLoading } = useSquareOrder();
     const [openAttribute, setOpenAttribute] = useState(null);
     const detailsRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [addingToCart, setAddingToCart] = useState(false);
 
-    // Check if product is already in cart
-    const isInCart = product && cartItems.some(item => item.id === product.id);
+    const handleAddToOrder = async () => {
+        if (isInOrder || isLoading) return;
+        setAddingToCart(true);
+
+        try {
+            await addItemToOrder(product);
+            window.location.href = '/cart';
+        } catch (error) {
+            console.error('Error adding to order:', error);
+        } finally {
+            setAddingToCart(false);
+        }
+    };
+
+    // Check if product is in order already
+    const isInOrder = product && orderItems.some(item => {
+        // You may need to match differently depending on how Square returns line items
+        const variation = product.itemData?.variations?.[0];
+        return item.catalogObjectId === variation?.id;
+    });
 
     // Scroll to details section
     const scrollToDetails = () => {
@@ -42,22 +60,6 @@ export default function ProductPage() {
     // Toggle fullscreen image
     const toggleFullscreen = () => {
         setIsFullscreen(!isFullscreen);
-    };
-
-    // Handle Add to Cart with visual feedback and redirect
-    const handleAddToCart = () => {
-        if (isInCart || addingToCart) return;
-
-        setAddingToCart(true);
-
-        // Add with slight delay to show feedback
-        setTimeout(() => {
-            if (product) {
-                addToCart(product);
-                console.log('added to cart');
-                window.location.href = '/cart';
-            }
-        }, 300);
     };
 
     // Close fullscreen on escape key press
@@ -209,18 +211,18 @@ export default function ProductPage() {
 
                         <div className="mt-auto space-y-4">
                             <button
-                                onClick={handleAddToCart}
-                                disabled={isInCart || addingToCart}
+                                onClick={handleAddToOrder}
+                                disabled={isInOrder || addingToCart}
                                 className={`w-full py-3 uppercase tracking-wider text-sm font-light transition-all duration-300 ${addingToCart
                                         ? "bg-gray-700 text-white"
-                                        : isInCart
+                                        : isInOrder
                                             ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                                             : "bg-black text-white hover:bg-gray-900"
                                     }`}
                             >
                                 {addingToCart
                                     ? "Adding to Cart..."
-                                    : isInCart
+                                    : isInOrder
                                         ? "Already in Cart"
                                         : "Add to Cart"
                                 }

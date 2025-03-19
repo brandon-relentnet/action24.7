@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "./context/CartContext";
+import { SquareOrderProvider } from "@/app/context/SquareOrderContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -23,13 +23,13 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="bg-white text-black">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
-        <CartProvider>
+        <SquareOrderProvider>
           <Navbar />
           <main>
             {children}
           </main>
           <Footer />
-        </CartProvider>
+        </SquareOrderProvider>
       </body>
     </html>
   );

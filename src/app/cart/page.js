@@ -1,31 +1,56 @@
 'use client';
 
-import { useCart } from '@/app/context/CartContext';
+import { useSquareOrder } from '@/app/context/SquareOrderContext';
 import Link from 'next/link';
 
 export default function CartPage() {
     const {
-        cartItems,
-        incrementQuantity,
-        decrementQuantity,
-        removeItemCompletely,
-        clearCart
-    } = useCart();
+        orderItems,
+        updateItemQuantity,
+        removeItemFromOrder,
+        clearOrder,
+        isLoading
+    } = useSquareOrder();
 
     // Calculate total in cents
-    const total = cartItems.reduce((sum, item) => {
-        const variation = item.itemData?.variations?.[0];
-        const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
-        const itemPrice = priceMoney ? Number(priceMoney.amount) : 0;
-        return sum + (itemPrice * (item.quantity || 1));
+    const total = orderItems.reduce((sum, item) => {
+        const basePriceMoney = item.basePriceMoney || {};
+        const itemPrice = basePriceMoney.amount ? Number(basePriceMoney.amount) : 0;
+        return sum + (itemPrice * (parseInt(item.quantity) || 1));
     }, 0);
+
+    const handleIncrement = (lineItemId) => {
+        const item = orderItems.find(item => item.uid === lineItemId);
+        if (item) {
+            const currentQuantity = parseInt(item.quantity) || 1;
+            updateItemQuantity(lineItemId, currentQuantity + 1);
+        }
+    };
+
+    const handleDecrement = (lineItemId) => {
+        const item = orderItems.find(item => item.uid === lineItemId);
+        if (item) {
+            const currentQuantity = parseInt(item.quantity) || 1;
+            if (currentQuantity > 1) {
+                updateItemQuantity(lineItemId, currentQuantity - 1);
+            } else {
+                removeItemFromOrder(lineItemId);
+            }
+        }
+    };
 
     return (
         <div className="min-h-screen bg-white pt-32 pb-24 px-6 md:px-12">
             <div className="max-w-4xl mx-auto">
                 <h1 className="text-3xl font-light tracking-wider uppercase mb-12 text-center">Shopping Bag</h1>
 
-                {cartItems.length === 0 ? (
+                {isLoading && (
+                    <div className="text-center py-6">
+                        <p className="text-gray-600">Loading your cart...</p>
+                    </div>
+                )}
+
+                {!isLoading && orderItems.length === 0 ? (
                     <div className="text-center py-12">
                         <p className="text-gray-600 mb-8">Your shopping bag is empty.</p>
                         <Link
@@ -39,19 +64,25 @@ export default function CartPage() {
                     <div>
                         {/* Cart Items */}
                         <div className="mb-12 border-b border-gray-200">
-                            {cartItems.map(item => {
-                                const variation = item.itemData?.variations?.[0];
-                                const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
-                                const price = priceMoney ? (priceMoney.amount / 100).toFixed(2) : 'N/A';
-                                const quantity = item.quantity || 1;
+                            {orderItems.map(item => {
+                                const basePriceMoney = item.basePriceMoney || {};
+                                const price = basePriceMoney.amount ? (basePriceMoney.amount / 100).toFixed(2) : 'N/A';
+                                const quantity = parseInt(item.quantity) || 1;
                                 const itemTotal = (price * quantity).toFixed(2);
 
+                                // Square orders store item name directly
+                                const itemName = item.name || 'Unknown Item';
+
+                                // Get image from catalog item data if available
+                                // Note: You'll need to ensure your API returns the image URL in the line item
+                                const imageUrl = item.imageUrl || null;
+
                                 return (
-                                    <div key={item.id} className="flex flex-col sm:flex-row py-8 border-t border-gray-200">
+                                    <div key={item.uid} className="flex flex-col sm:flex-row py-8 border-t border-gray-200">
                                         {/* Product Image */}
                                         <div className="sm:w-1/4 mb-4 sm:mb-0">
-                                            {item.imageUrl ? (
-                                                <img src={item.imageUrl} alt={item.itemData?.name} className="w-24 h-24 object-cover" />
+                                            {imageUrl ? (
+                                                <img src={imageUrl} alt={itemName} className="w-24 h-24 object-cover" />
                                             ) : (
                                                 <div className="w-24 h-24 bg-gray-100 flex items-center justify-center">
                                                     <p className="text-gray-400 text-xs">No image</p>
@@ -61,9 +92,9 @@ export default function CartPage() {
 
                                         {/* Product Details */}
                                         <div className="sm:w-2/4">
-                                            <h2 className="text-lg font-light mb-1">{item.itemData?.name}</h2>
+                                            <h2 className="text-lg font-light mb-1">{itemName}</h2>
                                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                                                {item.itemData?.description || 'No description available'}
+                                                {item.note || 'No description available'}
                                             </p>
 
                                             {/* Quantity Controls */}
@@ -71,8 +102,9 @@ export default function CartPage() {
                                                 <span className="text-sm mr-4">Quantity:</span>
                                                 <div className="flex items-center border border-gray-200">
                                                     <button
-                                                        onClick={() => decrementQuantity(item.id)}
+                                                        onClick={() => handleDecrement(item.uid)}
                                                         className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black"
+                                                        disabled={isLoading}
                                                     >
                                                         -
                                                     </button>
@@ -80,8 +112,9 @@ export default function CartPage() {
                                                         {quantity}
                                                     </span>
                                                     <button
-                                                        onClick={() => incrementQuantity(item.id)}
+                                                        onClick={() => handleIncrement(item.uid)}
                                                         className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black"
+                                                        disabled={isLoading}
                                                     >
                                                         +
                                                     </button>
@@ -89,8 +122,9 @@ export default function CartPage() {
                                             </div>
 
                                             <button
-                                                onClick={() => removeItemCompletely(item.id)}
+                                                onClick={() => removeItemFromOrder(item.uid)}
                                                 className="text-xs uppercase tracking-wider underline-offset-2 hover:underline"
+                                                disabled={isLoading}
                                             >
                                                 Remove
                                             </button>
@@ -129,7 +163,10 @@ export default function CartPage() {
                         {/* Checkout Buttons */}
                         <div className="flex flex-col space-y-4">
                             <Link href="/checkout" className="w-full">
-                                <button className="w-full py-3 bg-black text-white uppercase tracking-wider text-sm font-light transition-colors hover:bg-gray-900">
+                                <button
+                                    className="w-full py-3 bg-black text-white uppercase tracking-wider text-sm font-light transition-colors hover:bg-gray-900"
+                                    disabled={isLoading}
+                                >
                                     Proceed to Checkout
                                 </button>
                             </Link>
@@ -141,8 +178,9 @@ export default function CartPage() {
                             </Link>
 
                             <button
-                                onClick={clearCart}
+                                onClick={clearOrder}
                                 className="w-full py-3 text-gray-500 uppercase tracking-wider text-sm font-light hover:text-black transition-colors"
+                                disabled={isLoading}
                             >
                                 Clear Cart
                             </button>

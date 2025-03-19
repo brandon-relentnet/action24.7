@@ -12,7 +12,6 @@ const token = process.env.APP_ENV === 'production'
     ? process.env.PRODUCTION_SQUARE_ACCESS_TOKEN
     : process.env.SANDBOX_SQUARE_ACCESS_TOKEN;
 
-    console.log('token', token);
 // Initialize the Square client.
 const client = new SquareClient({
     environment:
@@ -28,8 +27,13 @@ export async function GET() {
         const catalogResponse = await client.catalog.list({
             includeRelatedObjects: true,
         });
+
+        //console.log('catalogResponse', catalogResponse);
         const catalogItems = (catalogResponse.data || []).filter(item => item.type === 'ITEM');
         const catalogCategories = (catalogResponse.data || []).filter(item => item.type === 'CATEGORY');
+        const catalogTaxes = (catalogResponse.data || []).filter(item => item.type === 'TAX');
+
+        console.log(catalogTaxes);
 
         // Extract all object IDs from the catalog items.
         const objectIds = catalogItems.map(item => item.id);
