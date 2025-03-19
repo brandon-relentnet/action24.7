@@ -3,7 +3,8 @@ import { client, locationId } from '@/utils/squareInfo';
 
 export async function GET(request, { params }) {
     const { orderId } = await params; 
-
+    
+    console.log('Retrieving order for orderId:', orderId);
     try {
         const response = await client.orders.get({orderId : orderId});
 

@@ -1,7 +1,6 @@
 // app/api/orders/[orderId]/update/route.js
 import { randomUUID } from "crypto";
 import { client, locationId } from '@/utils/squareInfo';
-import { version } from "os";
 
 export async function POST(request, { params }) {
     const { orderId } = await params;
@@ -47,7 +46,8 @@ export async function POST(request, { params }) {
                                 uid: lineItemId,
                                 quantity: quantity.toString()
                             }
-                        ]
+                        ],
+                        version: versionId
                     }
                 });
                 break;

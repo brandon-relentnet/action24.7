@@ -9,10 +9,10 @@ export default function CartPage() {
         updateItemQuantity,
         removeItemFromOrder,
         clearOrder,
-        isLoading
+        orderId,
+        isLoading,
+        fetchOrderCalculation
     } = useSquareOrder();
-
-    console.log('Order Items:', orderItems);
 
     // Calculate total in cents
     const total = orderItems.reduce((sum, item) => {
@@ -185,6 +185,13 @@ export default function CartPage() {
                                 disabled={isLoading}
                             >
                                 Clear Cart
+                            </button>
+                            <button
+                                onClick={() => fetchOrderCalculation(orderId)}
+                                className="w-full py-3 text-gray-500 uppercase tracking-wider text-sm font-light hover:text-black transition-colors"
+                                disabled={isLoading}
+                            >
+                                Update Total
                             </button>
                         </div>
                     </div>

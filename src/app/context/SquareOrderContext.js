@@ -8,6 +8,7 @@ export function SquareOrderProvider({ children }) {
     const [orderId, setOrderId] = useState(null);
     const [versionId, setVersionId] = useState(null);
     const [orderItems, setOrderItems] = useState([]);
+    const [orderCalculation, setOrderCalculation] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -34,8 +35,6 @@ export function SquareOrderProvider({ children }) {
 
             const data = await response.json();
 
-            console.log('Fetched order details:', data);
-
             if (!data.order) {
                 throw new Error('Invalid order data returned from API');
             }
@@ -51,6 +50,31 @@ export function SquareOrderProvider({ children }) {
                 localStorage.removeItem("squareOrderId");
                 setOrderId(null);
             }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchOrderCalculation = async (id) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(`/api/orders/${id}/calculate`);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to fetch order calculation: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.order) {
+                throw new Error('Invalid order data returned from API');
+            }
+
+            setOrderCalculation(data);
+        } catch (err) {
+            console.error('Error fetching order calculation:', err);
+            setError(err.message);
         } finally {
             setIsLoading(false);
         }
@@ -114,7 +138,8 @@ export function SquareOrderProvider({ children }) {
                 body: JSON.stringify({
                     action: 'update_quantity',
                     lineItemId,
-                    quantity: newQuantity
+                    quantity: newQuantity,
+                    versionId
                 })
             });
 
@@ -196,7 +221,8 @@ export function SquareOrderProvider({ children }) {
         removeItemFromOrder,
         clearOrder,
         totalItems,
-        fetchOrderDetails
+        fetchOrderDetails,
+        fetchOrderCalculation
     };
 
     return (
