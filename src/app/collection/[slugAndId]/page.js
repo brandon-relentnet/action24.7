@@ -26,6 +26,7 @@ export default function ProductPage() {
 
         try {
             await addItemToOrder(product);
+            console.log('Item added to order:', product);
             window.location.href = '/cart';
         } catch (error) {
             console.error('Error adding to order:', error);

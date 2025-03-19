@@ -34,6 +34,8 @@ export function SquareOrderProvider({ children }) {
 
             const data = await response.json();
 
+            console.log('Fetched order details:', data);
+
             if (!data.order) {
                 throw new Error('Invalid order data returned from API');
             }
@@ -84,7 +86,8 @@ export function SquareOrderProvider({ children }) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'add_item',
-                        itemData: { ...item, quantity: 1 }
+                        itemData: { ...item, quantity: 1 },
+                        versionId
                     })
                 });
 

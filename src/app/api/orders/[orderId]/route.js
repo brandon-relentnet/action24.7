@@ -2,7 +2,7 @@
 import { client, locationId } from '@/utils/squareInfo';
 
 export async function GET(request, { params }) {
-    const { orderId } = await params;  // Remove the 'await' here - params is not a Promise
+    const { orderId } = await params; 
 
     try {
         const response = await client.orders.get({orderId : orderId});

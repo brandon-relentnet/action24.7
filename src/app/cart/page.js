@@ -12,6 +12,8 @@ export default function CartPage() {
         isLoading
     } = useSquareOrder();
 
+    console.log('Order Items:', orderItems);
+
     // Calculate total in cents
     const total = orderItems.reduce((sum, item) => {
         const basePriceMoney = item.basePriceMoney || {};

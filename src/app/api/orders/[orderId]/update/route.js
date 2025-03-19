@@ -29,7 +29,8 @@ export async function POST(request, { params }) {
                                 quantity: (itemData.quantity || 1).toString(),
                                 itemType: itemData.type || 'ITEM',
                             }
-                        ]
+                        ],
+                        version: versionId
                     }
                 });
                 break;
@@ -52,27 +53,15 @@ export async function POST(request, { params }) {
                 break;
 
             case 'remove_item':
-                // First get the current order to see all line items
-                const currentOrder = await client.orders.get(orderId);
-
-                // Filter out the item to remove
-                const updatedLineItems = (currentOrder.order.lineItems || [])
-                    .filter(item => item.uid !== lineItemId)
-                    .map(item => ({
-                        uid: item.uid,
-                        quantity: item.quantity
-                    }));
-
-                console.log('updatedLineItems', updatedLineItems);
-
-                // Update the order with only the items we want to keep
+                // Remove an item from the order
+                console.log('Removing item:', lineItemId);
                 response = await client.orders.update({
                     orderId,
                     idempotencyKey: randomUUID(),
+                    fieldsToClear: [`line_items[${lineItemId}]`],
                     order: {
                         locationId,
-                        lineItems: updatedLineItems,
-                        version: currentOrder.order.version
+                        version: versionId
                     }
                 });
                 break;
