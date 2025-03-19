@@ -16,6 +16,8 @@ export async function GET(request, { params }) {
         // Retrieve the existing order using the orderId.
         const response = await client.orders.get({ orderId: orderId });
 
+        const subTotal = response.order.totalMoney;
+
         // Add the taxes array to the order.
         response.order.taxes = [
             {
@@ -31,7 +33,10 @@ export async function GET(request, { params }) {
             order: response.order,
         });
 
-        console.log('Calculated order:', orderCalculation);
+        // Add the subtotal to the final order calculation.
+        orderCalculation.order.subTotal = subTotal;
+
+        console.log(orderCalculation);
 
         // Return the calculated order details.
         return new Response(JSON.stringify(orderCalculation), {

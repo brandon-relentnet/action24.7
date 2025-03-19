@@ -19,7 +19,7 @@ if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
 }
 
 export default function CheckoutPage() {
-    const { orderId, orderItems, clearOrder, updateItemQuantity, removeItemFromOrder } = useSquareOrder(); 
+    const { orderId, orderItems, clearOrder, updateItemQuantity, removeItemFromOrder, orderCalculation } = useSquareOrder();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -34,12 +34,7 @@ export default function CheckoutPage() {
     });
 
     // Calculate the subtotal amount (in cents)
-    const subTotal = orderItems.reduce((sum, item) => {
-        const variation = item.itemData?.variations?.[0];
-        const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
-        const itemPrice = priceMoney ? Number(priceMoney.amount) : 0;
-        return sum + (itemPrice * (item.quantity || 1));
-    }, 0);
+    const subTotal = orderCalculation?.order?.subTotal.amount || 0;
 
     // Calculate the tax total
     const taxTotal = subTotal * 0.0975;
@@ -227,14 +222,14 @@ export default function CheckoutPage() {
                             <h2 className="text-xl font-light tracking-wide mb-6 uppercase">Order Summary</h2>
 
                             <div className="space-y-4 mb-8">
-                                {orderItems.map(item => {
+                                {orderItems.map((item, index) => {
                                     const variation = item.itemData?.variations?.[0];
                                     const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
                                     const price = priceMoney ? (priceMoney.amount / 100).toFixed(2) : 'N/A';
                                     const quantity = item.quantity || 1;
 
                                     return (
-                                        <div key={item.id} className="flex justify-between">
+                                        <div key={item.id || index} className="flex justify-between">
                                             <div className="flex">
                                                 <div className="mr-3">
                                                     {item.imageUrl ? (
