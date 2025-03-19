@@ -1,3 +1,4 @@
+//app/api/catalog/route.js
 // Ensure BigInts are serialized as strings.
 BigInt.prototype.toJSON = function () {
     return this.toString();
@@ -6,20 +7,7 @@ BigInt.prototype.toJSON = function () {
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { SquareClient, SquareEnvironment } from 'square';
-
-const token = process.env.APP_ENV === 'production'
-    ? process.env.PRODUCTION_SQUARE_ACCESS_TOKEN
-    : process.env.SANDBOX_SQUARE_ACCESS_TOKEN;
-
-// Initialize the Square client.
-const client = new SquareClient({
-    environment:
-        process.env.APP_ENV === 'production'
-            ? SquareEnvironment.Production
-            : SquareEnvironment.Sandbox,
-    token: token,
-});
+import { client } from '@/utils/squareInfo';
 
 export async function GET() {
     try {
@@ -28,12 +16,8 @@ export async function GET() {
             includeRelatedObjects: true,
         });
 
-        //console.log('catalogResponse', catalogResponse);
         const catalogItems = (catalogResponse.data || []).filter(item => item.type === 'ITEM');
         const catalogCategories = (catalogResponse.data || []).filter(item => item.type === 'CATEGORY');
-        const catalogTaxes = (catalogResponse.data || []).filter(item => item.type === 'TAX');
-
-        console.log(catalogTaxes);
 
         // Extract all object IDs from the catalog items.
         const objectIds = catalogItems.map(item => item.id);
@@ -41,11 +25,14 @@ export async function GET() {
             return NextResponse.json({ objects: [] });
         }
 
+        //console.log('Catalog Items:', catalogItems);
+
         // Batch retrieve catalog objects along with their related objects.
         const batchResponse = await client.catalog.batchGet({
             objectIds,
             includeRelatedObjects: true,
         });
+
         // Access the objects and related objects from the batch response.
         const relatedObjects = batchResponse.relatedObjects || [];
 

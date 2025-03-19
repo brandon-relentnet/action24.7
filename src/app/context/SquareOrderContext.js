@@ -49,7 +49,7 @@ export function SquareOrderProvider({ children }) {
             if (!detailsData.order) {
                 throw new Error("Invalid order data returned from API");
             }
-            setVersionId(detailsData.order.version);
+            setVersionId(detailsData.order.version || 1);
             setOrderItems(detailsData.order.lineItems || []);
             setOrderCalculation(calculationData);
         } catch (err) {
@@ -74,6 +74,7 @@ export function SquareOrderProvider({ children }) {
                 const data = await apiCall("/api/orders/create", {
                     cartItems: [{ ...item, quantity: 1 }],
                 });
+                console.log("Payload for create/update:", { ...item, quantity: 1 });
                 const newOrderId = data.order.id;
                 localStorage.setItem("squareOrderId", newOrderId);
                 setOrderId(newOrderId);

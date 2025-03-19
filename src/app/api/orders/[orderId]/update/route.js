@@ -54,7 +54,6 @@ export async function POST(request, { params }) {
 
             case 'remove_item':
                 // Remove an item from the order
-                console.log('Removing item:', lineItemId);
                 response = await client.orders.update({
                     orderId,
                     idempotencyKey: randomUUID(),
