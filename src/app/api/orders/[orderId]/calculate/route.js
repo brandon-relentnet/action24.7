@@ -30,42 +30,15 @@ export async function GET(request, { params }) {
             });
         }
 
-        const subTotal = response.order.totalMoney;
-
-        // Extract the necessary data from line items.
-        const newLineItems = response.order.lineItems.map((lineItem) => {
-            return {
-                catalogObjectId: lineItem.catalogObjectId,
-                quantity: lineItem.quantity,
-                itemType: lineItem.itemType,
-            };
-        });
-
-        const orderToCalculate = {
-            locationId: response.order.locationId,
-            lineItems: newLineItems,
+        const subTotal = {
+            amount: (response.order.totalMoney.amount - response.order.totalTaxMoney.amount),
+            currency: response.order.totalMoney.currency,
         };
 
-        // Add the taxes array to the order.
-        orderToCalculate.taxes = [
-            {
-            percentage: "9.75",
-            scope: "ORDER",
-            uid: "STATE-SALES-9.75-PCT",
-            name: "State sales tax - 9.75%",
-            }
-        ];
-
-        // Use the modified order to perform calculations.
-        const orderCalculation = await client.orders.calculate({
-            order: orderToCalculate,
-        });
-
-        // Add the subtotal to the final order calculation.
-        orderCalculation.order.subTotal = subTotal;
+        response.order.subTotal = subTotal;
 
         // Return the calculated order details.
-        return new Response(JSON.stringify(orderCalculation), {
+        return new Response(JSON.stringify(response), {
             status: 200,
             headers: {
                 "Content-Type": "application/json",

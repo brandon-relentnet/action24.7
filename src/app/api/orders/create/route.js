@@ -27,8 +27,18 @@ export async function POST(request) {
         order: {
             locationId,
             lineItems,
+            taxes: [
+                {
+                    percentage: "9.75",
+                    scope: "ORDER",
+                    uid: "STATE-SALES-9.75-PCT",
+                    name: "State sales tax - 9.75%",
+                }
+            ]
         },
     });
+
+    console.log('Order created:', orderResponse);
 
     return new Response(JSON.stringify(orderResponse), {
         status: 200,

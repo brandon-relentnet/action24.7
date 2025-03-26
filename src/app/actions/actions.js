@@ -25,34 +25,13 @@ const client = new SquareClient({
     token: token,
 });
 
-export async function submitPayment(sourceId, checkoutData, cartItems) {
+export async function submitPayment(sourceId, checkoutData) {
     try {
-        // Build order line items from the cart data.
-        const lineItems = cartItems.map(item => {
-            const variation = item.itemData?.variations?.[0];
-            if (!variation || !variation.id) {
-                throw new Error('Invalid item variation data');
-            }
-            return {
-                catalogObjectId: variation.id,       // Use the variation's id from your catalog.
-                quantity: item.quantity.toString(),    // Square expects quantity as a string.
-                itemType: item.type,                   // For example: "ITEM"
-            };
+        const taxesTest = await client.orders.get({
+            orderId: checkoutData.orderId,
         });
 
-        // Create an order with the line items.
-        const orderResponse = await client.orders.create({
-            idempotencyKey: randomUUID(),
-            order: {
-                locationId,
-                lineItems,
-            },
-        });
-
-        const orderId = orderResponse.order?.id;
-        if (!orderId) {
-            throw new Error('Order creation failed');
-        }
+        console.log("taxesTest:", taxesTest);
 
         // Process the payment and attach the created order.
         const paymentResponse = await client.payments.create({
@@ -60,9 +39,9 @@ export async function submitPayment(sourceId, checkoutData, cartItems) {
             sourceId,
             amountMoney: {
                 currency: checkoutData.currency,
-                amount: BigInt(checkoutData.amount), // amount in cents
+                amount: BigInt(parseInt(checkoutData.amount)),
             },
-            orderId, // Attaches the payment to the created order.
+            orderId: checkoutData.orderId,
         });
 
         return paymentResponse;

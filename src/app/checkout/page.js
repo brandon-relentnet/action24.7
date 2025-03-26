@@ -40,6 +40,8 @@ export default function CheckoutPage() {
     const subTotal = orderCalculation?.order?.subTotal?.amount || 0;
     const currency = orderCalculation?.order?.subTotal?.currency || 'USD';
 
+    console.log(orderCalculation);
+
     // Calculate tax and total amounts in cents
     const taxTotal = subTotal * 0.0975;
     const totalAmount = subTotal + taxTotal;
