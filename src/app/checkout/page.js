@@ -19,7 +19,10 @@ if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
 }
 
 export default function CheckoutPage() {
-    const { orderId, orderItems, clearOrder, updateItemQuantity, removeItemFromOrder, orderCalculation } = useSquareOrder();
+    const { orderId,
+        orderItems,
+        clearOrder,
+        orderCalculation } = useSquareOrder();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -33,13 +36,12 @@ export default function CheckoutPage() {
         country: 'US'
     });
 
-    // Calculate the subtotal amount (in cents)
-    const subTotal = orderCalculation?.order?.subTotal.amount || 0;
+    // Retrieve subtotal and currency from the order calculation (values in cents)
+    const subTotal = orderCalculation?.order?.subTotal?.amount || 0;
+    const currency = orderCalculation?.order?.subTotal?.currency || 'USD';
 
-    // Calculate the tax total
+    // Calculate tax and total amounts in cents
     const taxTotal = subTotal * 0.0975;
-
-    // Calculate the total amount (subtotal + tax)
     const totalAmount = subTotal + taxTotal;
 
     const handleInputChange = (e) => {
@@ -57,7 +59,7 @@ export default function CheckoutPage() {
             const checkoutData = {
                 orderId, // Pass this instead of creating a new order
                 amount: totalAmount,
-                currency: "USD",
+                currency: currency,
                 customerDetails: formData
             };
 
@@ -75,6 +77,63 @@ export default function CheckoutPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const CheckoutItem = ({ item }) => {
+        const {
+            basePriceMoney = {},
+            quantity: qty = 1,
+            uid,
+            name,
+            description,
+            imageUrl,
+        } = item;
+
+        const quantity = parseInt(qty) || 1;
+        // Price in dollars (as a number)
+        const priceNum = basePriceMoney.amount ? basePriceMoney.amount / 100 : 0;
+        const formattedPrice = priceNum.toFixed(2);
+        const itemTotal = (priceNum * quantity).toFixed(2);
+
+        return (
+            <div key={uid} className="flex flex-col sm:flex-row py-4">
+                {/* Product Image */}
+                <div className="sm:w-1/4 mb-4 sm:mb-0">
+                    {imageUrl ? (
+                        <img src={imageUrl} alt={name || 'Unknown Item'} className="size-16 mx-auto object-cover" />
+                    ) : (
+                        <div className="w-24 h-auto bg-gray-100 flex items-center justify-center">
+                            <p className="text-gray-400 text-xs">No image</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Product Details */}
+                <div className="sm:w-2/4">
+                    <h2 className="text-lg font-light mb-1">{name || 'Unknown Item'}</h2>
+                    <p className="text-sm text-gray-600 mb-4 truncate">
+                        {description || 'No description available'}
+                    </p>
+
+                    {/* Quantity */}
+                    <div >
+                    </div>
+                </div>
+
+                {/* Price */}
+                <div className="sm:w-1/4 text-right mt-4 sm:mt-0 flex flex-col items-center">
+                    <span className="text-sm">Quantity: {quantity}</span>
+                    <div>
+                        <p className="font-light">
+                            ${formattedPrice} {currency}
+                        </p>
+                        {quantity > 1 && (
+                            <p className="text-sm text-gray-500">${itemTotal} total</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -221,41 +280,10 @@ export default function CheckoutPage() {
                         <div className="bg-gray-50 p-6">
                             <h2 className="text-xl font-light tracking-wide mb-6 uppercase">Order Summary</h2>
 
-                            <div className="space-y-4 mb-8">
-                                {orderItems.map((item, index) => {
-                                    const variation = item.itemData?.variations?.[0];
-                                    const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
-                                    const price = priceMoney ? (priceMoney.amount / 100).toFixed(2) : 'N/A';
-                                    const quantity = item.quantity || 1;
-
-                                    return (
-                                        <div key={item.id || index} className="flex justify-between">
-                                            <div className="flex">
-                                                <div className="mr-3">
-                                                    {item.imageUrl ? (
-                                                        <img src={item.imageUrl} alt={item.itemData?.name} className="w-16 h-16 object-cover" />
-                                                    ) : (
-                                                        <div className="w-16 h-16 bg-gray-100"></div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="font-light">{item.itemData?.name}</p>
-                                                    {quantity > 1 && (
-                                                        <p className="text-sm text-gray-500">Qty: {quantity}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <p className="font-light">
-                                                ${price}
-                                                {quantity > 1 && (
-                                                    <span className="text-sm text-gray-500 block text-right">
-                                                        ${(price * quantity).toFixed(2)} total
-                                                    </span>
-                                                )}
-                                            </p>
-                                        </div>
-                                    );
-                                })}
+                            <div className="border-t border-gray-200">
+                                {orderItems.map((item) => (
+                                    <CheckoutItem key={item.uid} item={item} />
+                                ))}
                             </div>
 
                             <div className="border-t border-gray-200 pt-4 mb-8">

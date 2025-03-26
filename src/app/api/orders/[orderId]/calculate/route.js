@@ -56,17 +56,9 @@ export async function GET(request, { params }) {
             }
         ];
 
-        // Remove the catalogVersion from each line item.
-        if (response.order.lineItems && Array.isArray(response.order.lineItems)) {
-            response.order.lineItems.forEach((lineItem) => {
-                delete lineItem.catalogVersion;
-
-            });
-        }
-
         // Use the modified order to perform calculations.
         const orderCalculation = await client.orders.calculate({
-            order: response.order,
+            order: orderToCalculate,
         });
 
         // Add the subtotal to the final order calculation.

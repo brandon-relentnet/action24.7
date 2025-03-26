@@ -59,7 +59,7 @@ export default function CartPage() {
                             <img src={imageUrl} alt={name || 'Unknown Item'} className="w-24 h-full mx-auto object-cover" />
                         </a>
                     ) : (
-                        <div className="w-24 h-24 bg-gray-100 flex items-center justify-center">
+                        <div className="w-24 h-auto bg-gray-100 flex items-center justify-center">
                             <p className="text-gray-400 text-xs">No image</p>
                         </div>
                     )}
@@ -93,8 +93,6 @@ export default function CartPage() {
                             </button>
                         </div>
                     </div>
-
-
                 </div>
 
                 {/* Price */}
