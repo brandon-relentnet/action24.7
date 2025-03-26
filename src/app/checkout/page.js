@@ -20,9 +20,7 @@ if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
 }
 
 export default function CheckoutPage() {
-    const { orderId,
-        orderItems,
-        orderCalculation } = useSquareOrder();
+    const { orderId, orderItems, orderCalculation } = useSquareOrder();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [shippingMethod, setShippingMethod] = useState('standard');
@@ -30,6 +28,7 @@ export default function CheckoutPage() {
     const [shippingDistance, setShippingDistance] = useState(null);
     const [calculatingShipping, setCalculatingShipping] = useState(false);
     const [shippingError, setShippingError] = useState('');
+    const [paymentError, setPaymentError] = useState('');
 
     const [formData, setFormData] = useState({
         email: '',
@@ -45,10 +44,6 @@ export default function CheckoutPage() {
     // Retrieve subtotal and currency from the order calculation (values in cents)
     const subTotal = orderCalculation?.order?.subTotal?.amount || 0;
     const currency = orderCalculation?.order?.subTotal?.currency || 'USD';
-
-    // Calculate tax and total amounts in cents
-    //const taxTotal = .0975 * (subTotal + shippingCost);
-    //const totalAmount = subTotal + taxTotal + shippingCost;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -130,14 +125,27 @@ export default function CheckoutPage() {
         }
     };
 
+    // Validate the form
+    const isFormValid = () => {
+        const { email, firstName, lastName, address, city, state, zipCode } = formData;
+        return email && firstName && lastName && address && city && state && zipCode && shippingCost > 0 && !calculatingShipping;
+    };
+
     const handlePayment = async (token) => {
+        if (!isFormValid()) {
+            setPaymentError('Please complete all required fields and ensure shipping is calculated.');
+            return;
+        }
+
         setLoading(true);
+        setPaymentError('');
+
         try {
-            // Use the existing orderId from context
+            // Prepare checkout data with shipping information
             const checkoutData = {
                 orderId,
                 amount: totalAmount,
-                currency: currency,
+                currency,
                 customerDetails: formData,
                 shippingDetails: {
                     method: shippingMethod,
@@ -146,9 +154,24 @@ export default function CheckoutPage() {
                 }
             };
 
+            // Process payment with integrated shipping
             const result = await submitPayment(token.token, checkoutData);
-            if (result && result.payment) {
+
+            // Log the result structure to understand the response format
+            console.log('Payment result:', result);
+
+            // Check for payment success using multiple possible response structures
+            const isPaymentSuccessful =
+                // If response has result.payment structure
+                (result?.result?.payment) ||
+                // Or if response directly has payment property
+                (result?.payment) ||
+                // Or if Square SDK returns direct payment object
+                (result?.id && result?.status);
+
+            if (isPaymentSuccessful) {
                 localStorage.removeItem('lastOrderDetails');
+
                 // Store order information in localStorage before clearing
                 localStorage.setItem('lastOrderDetails', JSON.stringify({
                     orderId,
@@ -165,11 +188,11 @@ export default function CheckoutPage() {
                 localStorage.removeItem('squareOrderId');
                 router.push("/checkout-confirmation");
             } else {
-                alert("Payment failed");
+                setPaymentError("Payment processing failed. Please try again.");
             }
         } catch (error) {
             console.error("Payment error:", error);
-            alert("Error processing payment");
+            setPaymentError(error.message || "Error processing payment. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -371,11 +394,23 @@ export default function CheckoutPage() {
                                     <span className="font-light">Total</span>
                                     <span className="font-light">${(totalAmount / 100).toFixed(2)} USD</span>
                                 </div>
+
+                                {shippingDistance !== null && (
+                                    <div className="mt-4 text-xs text-gray-500">
+                                        <p>Shipping from: Baton Rouge, LA (approx. {shippingDistance} miles)</p>
+                                    </div>
+                                )}
                             </div>
 
                             <h2 className="text-xl font-light tracking-wide mb-6 uppercase">Payment</h2>
 
                             <div className="mb-8">
+                                {paymentError && (
+                                    <div className="mb-4 p-3 bg-red-100 text-red-700 text-sm rounded">
+                                        {paymentError}
+                                    </div>
+                                )}
+
                                 <PaymentForm
                                     applicationId={envApplicationId}
                                     locationId={envLocationId}
@@ -384,23 +419,26 @@ export default function CheckoutPage() {
                                         countryCode: 'US',
                                         currencyCode: 'USD',
                                         total: {
-                                            amount: totalAmount, // totalAmount is already in cents (an integer)
+                                            amount: totalAmount, // totalAmount is already in cents
                                             label: 'Total',
                                         }
                                     })}
                                 >
-                                    <CreditCard buttonProps={{
-                                        css: {
-                                            backgroundColor: '#000',
-                                            fontSize: '14px',
-                                            fontWeight: '300',
-                                            letterSpacing: '0.05em',
-                                            color: 'white',
-                                            '&:hover': {
-                                                backgroundColor: '#333'
+                                    <CreditCard
+                                        buttonProps={{
+                                            isLoading: loading,
+                                            css: {
+                                                backgroundColor: '#000',
+                                                fontSize: '14px',
+                                                fontWeight: '300',
+                                                letterSpacing: '0.05em',
+                                                color: 'white',
+                                                '&:hover': {
+                                                    backgroundColor: '#333'
+                                                }
                                             }
-                                        }
-                                    }} />
+                                        }}
+                                    />
                                 </PaymentForm>
 
                                 {loading && (
@@ -408,6 +446,11 @@ export default function CheckoutPage() {
                                         <p className="text-sm font-light tracking-wider animate-pulse">Processing payment...</p>
                                     </div>
                                 )}
+
+                                <div className="mt-6 text-xs text-gray-500">
+                                    <p>By clicking "Pay", you agree to our terms of service and privacy policy.</p>
+                                    <p>Shipping will be calculated based on your address and selected shipping method.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
