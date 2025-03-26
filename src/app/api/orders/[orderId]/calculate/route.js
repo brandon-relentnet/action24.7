@@ -3,7 +3,7 @@ BigInt.prototype.toJSON = function () {
     return Number(this);
 };
 
-import { client, locationId } from '@/utils/squareInfo';
+import { client } from '@/utils/squareInfo';
 
 export async function GET(request, { params }) {
     const { orderId } = await params;
@@ -32,8 +32,22 @@ export async function GET(request, { params }) {
 
         const subTotal = response.order.totalMoney;
 
+        // Extract the necessary data from line items.
+        const newLineItems = response.order.lineItems.map((lineItem) => {
+            return {
+                catalogObjectId: lineItem.catalogObjectId,
+                quantity: lineItem.quantity,
+                itemType: lineItem.itemType,
+            };
+        });
+
+        const orderToCalculate = {
+            locationId: response.order.locationId,
+            lineItems: newLineItems,
+        };
+
         // Add the taxes array to the order.
-        response.order.taxes = [
+        orderToCalculate.taxes = [
             {
             percentage: "9.75",
             scope: "ORDER",
@@ -46,6 +60,7 @@ export async function GET(request, { params }) {
         if (response.order.lineItems && Array.isArray(response.order.lineItems)) {
             response.order.lineItems.forEach((lineItem) => {
                 delete lineItem.catalogVersion;
+
             });
         }
 

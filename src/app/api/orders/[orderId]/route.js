@@ -1,5 +1,5 @@
 // app/api/orders/[orderId]/route.js
-import { client, locationId } from '@/utils/squareInfo';
+import { client } from '@/utils/squareInfo';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
@@ -127,6 +127,8 @@ export async function GET(request, { params }) {
                         // Add additional data from parent item
                         if (parentItem.itemData) {
                             enrichedItem.description = parentItem.itemData.description;
+                            enrichedItem.id = parentItem.id;
+
                         }
                     } else if (catalogItem.parentItem && catalogItem.parentItem.itemData && catalogItem.parentItem.itemData.imageIds) {
                         // Alternative: try to get images from the parentItem object directly
@@ -147,6 +149,7 @@ export async function GET(request, { params }) {
                     // Add additional data
                     if (catalogItem.itemData) {
                         enrichedItem.description = catalogItem.itemData.description;
+                        enrichedItem.id = catalogItem.id;
                     }
                 }
             } else {
@@ -155,10 +158,6 @@ export async function GET(request, { params }) {
 
             return enrichedItem;
         });
-
-        order.lineItems = enrichedLineItems;
-
-        //console.log(`Enriched order:`, order);
 
         // Return the order with the enriched line items
         return NextResponse.json({

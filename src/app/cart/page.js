@@ -3,6 +3,16 @@
 import { useSquareOrder } from '@/app/context/SquareOrderContext';
 import Link from 'next/link';
 
+function slugify(text) {
+    return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-');
+}
+
 export default function CartPage() {
     const {
         orderItems,
@@ -28,21 +38,24 @@ export default function CartPage() {
             quantity: qty = 1,
             uid,
             name,
-            note,
+            description,
             imageUrl,
         } = item;
+
         const quantity = parseInt(qty) || 1;
         // Price in dollars (as a number)
         const priceNum = basePriceMoney.amount ? basePriceMoney.amount / 100 : 0;
         const formattedPrice = priceNum.toFixed(2);
         const itemTotal = (priceNum * quantity).toFixed(2);
+        const slug = slugify(name);
+        const href = `/collection/${slug}-${item.id}`;
 
         return (
             <div key={uid} className="flex flex-col sm:flex-row py-8 border-t border-gray-200">
                 {/* Product Image */}
                 <div className="sm:w-1/4 mb-4 sm:mb-0">
                     {imageUrl ? (
-                        <img src={imageUrl} alt={name || 'Unknown Item'} className="w-24 h-24 object-cover" />
+                        <img src={imageUrl} alt={name || 'Unknown Item'} className="w-24 h-full mx-auto object-cover" />
                     ) : (
                         <div className="w-24 h-24 bg-gray-100 flex items-center justify-center">
                             <p className="text-gray-400 text-xs">No image</p>
@@ -52,13 +65,13 @@ export default function CartPage() {
 
                 {/* Product Details */}
                 <div className="sm:w-2/4">
-                    <h2 className="text-lg font-light mb-1">{name || 'Unknown Item'}</h2>
+                    <a href={href} className="text-lg font-light mb-1">{name || 'Unknown Item'}</a>
                     <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {note || 'No description available'}
+                        {description || 'No description available'}
                     </p>
 
                     {/* Quantity Controls */}
-                    <div className="flex items-center mb-4">
+                    <div className="flex items-center">
                         <span className="text-sm mr-4">Quantity:</span>
                         <div className="flex items-center border border-gray-200">
                             <button
@@ -79,6 +92,19 @@ export default function CartPage() {
                         </div>
                     </div>
 
+
+                </div>
+
+                {/* Price */}
+                <div className="sm:w-1/4 text-right mt-4 sm:mt-0 flex flex-col justify-between items-center">
+                    <div>
+                        <p className="font-light">
+                            ${formattedPrice} {currency}
+                        </p>
+                        {quantity > 1 && (
+                            <p className="text-sm text-gray-500">${itemTotal} total</p>
+                        )}
+                    </div>
                     <button
                         onClick={() => removeItemFromOrder(uid)}
                         className="text-xs uppercase tracking-wider underline-offset-2 hover:underline"
@@ -86,16 +112,6 @@ export default function CartPage() {
                     >
                         Remove
                     </button>
-                </div>
-
-                {/* Price */}
-                <div className="sm:w-1/4 text-right mt-4 sm:mt-0">
-                    <p className="font-light">
-                        ${formattedPrice} {currency}
-                    </p>
-                    {quantity > 1 && (
-                        <p className="text-sm text-gray-500">${itemTotal} total</p>
-                    )}
                 </div>
             </div>
         );

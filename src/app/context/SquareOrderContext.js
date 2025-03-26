@@ -52,6 +52,7 @@ export function SquareOrderProvider({ children }) {
             setVersionId(detailsData.order.version || 1);
             setOrderItems(detailsData.order.lineItems || []);
             setOrderCalculation(calculationData);
+            console.log("Order details updated:", detailsData.order);
         } catch (err) {
             console.error("Error updating order state:", err);
             setError(err.message);
