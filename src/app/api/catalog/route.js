@@ -25,8 +25,6 @@ export async function GET() {
             return NextResponse.json({ objects: [] });
         }
 
-        //console.log('Catalog Items:', catalogItems);
-
         // Batch retrieve catalog objects along with their related objects.
         const batchResponse = await client.catalog.batchGet({
             objectIds,

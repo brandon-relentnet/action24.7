@@ -38,8 +38,6 @@ export async function POST(request) {
         },
     });
 
-    console.log('Order created:', orderResponse);
-
     return new Response(JSON.stringify(orderResponse), {
         status: 200,
         headers: {

@@ -3,7 +3,8 @@
 import { useSquareOrder } from '@/app/context/SquareOrderContext';
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { submitPayment } from '@/app/actions/actions';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import CheckoutItem from '@/components/CheckoutItem';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -21,7 +22,6 @@ if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
 export default function CheckoutPage() {
     const { orderId,
         orderItems,
-        clearOrder,
         orderCalculation } = useSquareOrder();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -39,8 +39,6 @@ export default function CheckoutPage() {
     // Retrieve subtotal and currency from the order calculation (values in cents)
     const subTotal = orderCalculation?.order?.subTotal?.amount || 0;
     const currency = orderCalculation?.order?.subTotal?.currency || 'USD';
-
-    console.log(orderCalculation);
 
     // Calculate tax and total amounts in cents
     const taxTotal = subTotal * 0.0975;
@@ -67,8 +65,19 @@ export default function CheckoutPage() {
 
             const result = await submitPayment(token.token, checkoutData);
             if (result && result.payment) {
-                // Clear the order on successful payment
-                await clearOrder();
+                localStorage.removeItem('lastOrderDetails');
+                // Store order information in localStorage before clearing
+                localStorage.setItem('lastOrderDetails', JSON.stringify({
+                    orderId,
+                    orderItems,
+                    customerName: `${formData.firstName} ${formData.lastName}`,
+                    customerEmail: formData.email,
+                    totalAmount,
+                    currency,
+                    orderDate: new Date().toISOString()
+                }));
+
+                localStorage.removeItem('squareOrderId');
                 router.push("/checkout-confirmation");
             } else {
                 alert("Payment failed");
@@ -79,63 +88,6 @@ export default function CheckoutPage() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const CheckoutItem = ({ item }) => {
-        const {
-            basePriceMoney = {},
-            quantity: qty = 1,
-            uid,
-            name,
-            description,
-            imageUrl,
-        } = item;
-
-        const quantity = parseInt(qty) || 1;
-        // Price in dollars (as a number)
-        const priceNum = basePriceMoney.amount ? basePriceMoney.amount / 100 : 0;
-        const formattedPrice = priceNum.toFixed(2);
-        const itemTotal = (priceNum * quantity).toFixed(2);
-
-        return (
-            <div key={uid} className="flex flex-col sm:flex-row py-4">
-                {/* Product Image */}
-                <div className="sm:w-1/4 mb-4 sm:mb-0">
-                    {imageUrl ? (
-                        <img src={imageUrl} alt={name || 'Unknown Item'} className="size-16 mx-auto object-cover" />
-                    ) : (
-                        <div className="w-24 h-auto bg-gray-100 flex items-center justify-center">
-                            <p className="text-gray-400 text-xs">No image</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Product Details */}
-                <div className="sm:w-2/4">
-                    <h2 className="text-lg font-light mb-1">{name || 'Unknown Item'}</h2>
-                    <p className="text-sm text-gray-600 mb-4 truncate">
-                        {description || 'No description available'}
-                    </p>
-
-                    {/* Quantity */}
-                    <div >
-                    </div>
-                </div>
-
-                {/* Price */}
-                <div className="sm:w-1/4 text-right mt-4 sm:mt-0 flex flex-col items-center">
-                    <span className="text-sm">Quantity: {quantity}</span>
-                    <div>
-                        <p className="font-light">
-                            ${formattedPrice} {currency}
-                        </p>
-                        {quantity > 1 && (
-                            <p className="text-sm text-gray-500">${itemTotal} total</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
     };
 
     return (

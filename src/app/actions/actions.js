@@ -31,8 +31,6 @@ export async function submitPayment(sourceId, checkoutData) {
             orderId: checkoutData.orderId,
         });
 
-        console.log("taxesTest:", taxesTest);
-
         // Process the payment and attach the created order.
         const paymentResponse = await client.payments.create({
             idempotencyKey: randomUUID(),

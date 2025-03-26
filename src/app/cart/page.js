@@ -59,8 +59,8 @@ export default function CartPage() {
                             <img src={imageUrl} alt={name || 'Unknown Item'} className="w-24 h-full mx-auto object-cover" />
                         </a>
                     ) : (
-                        <div className="w-24 h-auto bg-gray-100 flex items-center justify-center">
-                            <p className="text-gray-400 text-xs">No image</p>
+                        <div className="w-24 h-full bg-gray-100 flex items-center justify-center mx-auto">
+                                <p className="text-gray-400 text-xs">No image</p>
                         </div>
                     )}
                 </div>

@@ -94,7 +94,6 @@ export default function CatalogPage() {
                     const name = item.itemData?.name || 'Unnamed Item';
                     const slug = slugify(name);
                     const href = `/collection/${slug}-${item.id}`;
-                    console.log(item);
                     const price = item.itemData?.variations?.[0]?.itemVariationData?.priceMoney?.amount / 100 || 'N/A';
 
                     return (
