@@ -96,6 +96,34 @@ export function SquareOrderProvider({ children }) {
         }
     };
 
+    const addShippingToOrder = async (item) => {
+        if (!orderId) {
+            throw new Error("No active order to add shipping to");
+        }
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            // Make sure we're using the API call helper function correctly
+            const response = await apiCall(`/api/orders/${orderId}/update`, {
+                action: "add_shipping",
+                itemData: item,  // Pass the item directly as itemData
+                versionId: versionId || 1,
+            });
+
+            // If successful, update the order state to reflect changes
+            await updateOrderState(orderId);
+            return response;  // Return the response for debugging
+        } catch (err) {
+            console.error("Error adding shipping to order:", err);
+            setError(err.message);
+            throw err;  // Re-throw to allow handling in the component
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const updateItemQuantity = async (lineItemId, newQuantity) => {
         if (!orderId) return;
         setIsLoading(true);
@@ -168,6 +196,7 @@ export function SquareOrderProvider({ children }) {
         totalItems,
         updateOrderState,
         orderCalculation,
+        addShippingToOrder,
     };
 
     return (

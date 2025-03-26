@@ -4,10 +4,14 @@ import { client, locationId } from '@/utils/squareInfo';
 
 export async function POST(request, { params }) {
     const { orderId } = await params;
-    const { action, itemData, lineItemId, quantity, versionId } = await request.json();
+    const body = await request.json();
+    const { action, itemData, lineItemId, quantity, versionId } = body;
 
     try {
         let response;
+
+        // Log the client structure to understand its properties
+        console.log("Client structure keys:", Object.keys(client));
 
         switch (action) {
             case 'add_item':
@@ -66,13 +70,38 @@ export async function POST(request, { params }) {
                 break;
 
             case 'clear_order':
-                // Clear the entire order (this is a custom action, not standard in Square)
+                // Clear the entire order
                 response = await client.orders.update({
                     orderId,
                     idempotencyKey: randomUUID(),
                     fieldsToClear: ['line_items'],
                     order: {
                         locationId,
+                        version: versionId
+                    }
+                });
+                break;
+
+            case 'add_shipping':
+                // Extract shipping details from the request
+                const { basePriceMoney } = itemData;
+
+                // Use the same client structure as your other working actions
+                response = await client.orders.update({
+                    orderId,
+                    idempotencyKey: randomUUID(),
+                    order: {
+                        locationId,
+                        lineItems: [
+                            {
+                                basePriceMoney: {
+                                    amount: BigInt(basePriceMoney.amount),
+                                    currency: basePriceMoney.currency || 'USD'
+                                },
+                                quantity: "1",
+                                itemType: "CUSTOM_AMOUNT"
+                            }
+                        ],
                         version: versionId
                     }
                 });
@@ -87,7 +116,11 @@ export async function POST(request, { params }) {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        console.error('Order update error:', error);
+        return new Response(JSON.stringify({
+            error: error.message,
+            details: error.errors || 'No additional details'
+        }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });

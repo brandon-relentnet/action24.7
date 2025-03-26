@@ -27,9 +27,7 @@ const client = new SquareClient({
 
 export async function submitPayment(sourceId, checkoutData) {
     try {
-        const taxesTest = await client.orders.get({
-            orderId: checkoutData.orderId,
-        });
+        
 
         // Process the payment and attach the created order.
         const paymentResponse = await client.payments.create({

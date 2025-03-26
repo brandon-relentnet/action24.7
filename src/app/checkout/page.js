@@ -135,7 +135,7 @@ export default function CheckoutPage() {
         try {
             // Use the existing orderId from context
             const checkoutData = {
-                orderId, // Pass this instead of creating a new order
+                orderId,
                 amount: totalAmount,
                 currency: currency,
                 customerDetails: formData,
