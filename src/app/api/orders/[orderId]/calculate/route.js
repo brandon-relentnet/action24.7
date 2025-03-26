@@ -3,7 +3,7 @@ BigInt.prototype.toJSON = function () {
     return Number(this);
 };
 
-import { client } from '@/utils/squareInfo';
+import { client, locationId } from '@/utils/squareInfo';
 
 export async function GET(request, { params }) {
     const { orderId } = await params;
@@ -41,6 +41,13 @@ export async function GET(request, { params }) {
             name: "State sales tax - 9.75%",
             }
         ];
+
+        // Remove the catalogVersion from each line item.
+        if (response.order.lineItems && Array.isArray(response.order.lineItems)) {
+            response.order.lineItems.forEach((lineItem) => {
+                delete lineItem.catalogVersion;
+            });
+        }
 
         // Use the modified order to perform calculations.
         const orderCalculation = await client.orders.calculate({

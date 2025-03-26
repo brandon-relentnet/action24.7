@@ -86,7 +86,7 @@ export async function GET(request, { params }) {
                 objectIds: imageIdsArray,
             });
 
-            console.log(`Found ${imageResponse.objects ? imageResponse.objects.length : 0} image objects`);
+            //console.log(`Found ${imageResponse.objects ? imageResponse.objects.length : 0} image objects`);
 
             // Create map of image IDs to image URLs
             if (imageResponse.objects) {
@@ -104,24 +104,24 @@ export async function GET(request, { params }) {
 
             // Try to find parent item through the catalog item map
             const catalogItem = catalogItemMap[item.catalogObjectId];
-            console.log(`Processing item: ${item.name} with catalogObjectId: ${item.catalogObjectId}`);
+            //console.log(`Processing item: ${item.name} with catalogObjectId: ${item.catalogObjectId}`);
 
             if (catalogItem) {
-                console.log(`Found catalog item with type: ${catalogItem.type}`);
+                //console.log(`Found catalog item with type: ${catalogItem.type}`);
 
                 // If it's a variation, get the parent item
                 if (catalogItem.type === 'ITEM_VARIATION' && catalogItem.parentItemId) {
                     const parentItem = catalogItemMap[catalogItem.parentItemId];
-                    console.log(`Found parent item: ${parentItem ? 'Yes' : 'No'}`);
+                    //console.log(`Found parent item: ${parentItem ? 'Yes' : 'No'}`);
 
                     if (parentItem && parentItem.itemData && parentItem.itemData.imageIds) {
                         // Get the first image ID from the parent item
                         const firstImageId = parentItem.itemData.imageIds[0];
-                        console.log(`Found image ID: ${firstImageId} for item: ${item.name}`);
+                        //console.log(`Found image ID: ${firstImageId} for item: ${item.name}`);
 
                         if (firstImageId && imageMap[firstImageId]) {
                             enrichedItem.imageUrl = imageMap[firstImageId];
-                            console.log(`Added image URL: ${enrichedItem.imageUrl} to item: ${item.name}`);
+                            //console.log(`Added image URL: ${enrichedItem.imageUrl} to item: ${item.name}`);
                         }
 
                         // Add additional data from parent item
@@ -141,7 +141,7 @@ export async function GET(request, { params }) {
                     const firstImageId = catalogItem.itemData.imageIds[0];
                     if (firstImageId && imageMap[firstImageId]) {
                         enrichedItem.imageUrl = imageMap[firstImageId];
-                        console.log(`Added image URL: ${enrichedItem.imageUrl} to item: ${item.name}`);
+                        //console.log(`Added image URL: ${enrichedItem.imageUrl} to item: ${item.name}`);
                     }
 
                     // Add additional data
@@ -158,7 +158,7 @@ export async function GET(request, { params }) {
 
         order.lineItems = enrichedLineItems;
 
-        console.log(`Enriched order:`, order);
+        //console.log(`Enriched order:`, order);
 
         // Return the order with the enriched line items
         return NextResponse.json({
