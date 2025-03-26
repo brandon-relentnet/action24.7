@@ -3,7 +3,7 @@
 import { useSquareOrder } from '@/app/context/SquareOrderContext';
 import { CreditCard, PaymentForm } from "react-square-web-payments-sdk";
 import { submitPayment } from '@/app/actions/actions';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import CheckoutItem from '@/components/CheckoutItem';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -25,6 +25,12 @@ export default function CheckoutPage() {
         orderCalculation } = useSquareOrder();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [shippingMethod, setShippingMethod] = useState('standard');
+    const [shippingCost, setShippingCost] = useState(0);
+    const [shippingDistance, setShippingDistance] = useState(null);
+    const [calculatingShipping, setCalculatingShipping] = useState(false);
+    const [shippingError, setShippingError] = useState('');
+
     const [formData, setFormData] = useState({
         email: '',
         firstName: '',
@@ -41,8 +47,8 @@ export default function CheckoutPage() {
     const currency = orderCalculation?.order?.subTotal?.currency || 'USD';
 
     // Calculate tax and total amounts in cents
-    const taxTotal = subTotal * 0.0975;
-    const totalAmount = subTotal + taxTotal;
+    //const taxTotal = .0975 * (subTotal + shippingCost);
+    //const totalAmount = subTotal + taxTotal + shippingCost;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -50,6 +56,78 @@ export default function CheckoutPage() {
             ...formData,
             [name]: value
         });
+    };
+
+    const shippingCostInCents = shippingCost * 100;
+
+    const taxTotal = useMemo(() => {
+        return 0.0975 * (subTotal + shippingCostInCents);
+    }, [subTotal, shippingCostInCents]);
+
+    const totalAmount = useMemo(() => {
+        return subTotal + shippingCostInCents + taxTotal;
+    }, [subTotal, shippingCostInCents, taxTotal]);
+
+    // Calculate shipping when address is complete
+    useEffect(() => {
+        const { address, city, state, zipCode, country } = formData;
+
+        // Check if all shipping fields are filled
+        const addressComplete = address && city && state && zipCode;
+
+        if (addressComplete) {
+            calculateShipping();
+        }
+    }, [formData.address, formData.city, formData.state, formData.zipCode, formData.country, shippingMethod]);
+
+    useEffect(() => {
+        if (shippingDistance !== null) {
+            calculateShipping();
+        }
+    }, [shippingMethod]);
+
+    const calculateShipping = async () => {
+        const { address, city, state, zipCode, country } = formData;
+
+        // Validate address fields
+        if (!address || !city || !state || !zipCode) {
+            return;
+        }
+
+        setCalculatingShipping(true);
+        setShippingError('');
+
+        try {
+            const response = await fetch('/api/shipping', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    address,
+                    city,
+                    state,
+                    zipCode,
+                    country,
+                    shippingMethod,
+                    quantity: orderItems.length || 1
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to calculate shipping');
+            }
+
+            setShippingCost(data.shippingCost);
+            setShippingDistance(data.distance);
+        } catch (error) {
+            console.error('Error calculating shipping:', error);
+            setShippingError(error.message || 'Error calculating shipping cost');
+        } finally {
+            setCalculatingShipping(false);
+        }
     };
 
     const handlePayment = async (token) => {
@@ -60,7 +138,12 @@ export default function CheckoutPage() {
                 orderId, // Pass this instead of creating a new order
                 amount: totalAmount,
                 currency: currency,
-                customerDetails: formData
+                customerDetails: formData,
+                shippingDetails: {
+                    method: shippingMethod,
+                    cost: shippingCost,
+                    distance: shippingDistance
+                }
             };
 
             const result = await submitPayment(token.token, checkoutData);
@@ -74,7 +157,9 @@ export default function CheckoutPage() {
                     customerEmail: formData.email,
                     totalAmount,
                     currency,
-                    orderDate: new Date().toISOString()
+                    orderDate: new Date().toISOString(),
+                    shippingCost,
+                    shippingMethod,
                 }));
 
                 localStorage.removeItem('squareOrderId');
@@ -227,6 +312,33 @@ export default function CheckoutPage() {
                                         <option value="JP">Japan</option>
                                     </select>
                                 </div>
+
+                                <div>
+                                    <label htmlFor="shippingMethod" className="block text-sm uppercase tracking-wider mb-2">Shipping Method</label>
+                                    <select
+                                        id="shippingMethod"
+                                        name="shippingMethod"
+                                        value={shippingMethod}
+                                        onChange={(e) => setShippingMethod(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 focus:outline-none focus:border-black"
+                                    >
+                                        <option value="standard">Standard (3-5 business days)</option>
+                                        <option value="express">Express (2 business days)</option>
+                                        <option value="overnight">Overnight (Next business day)</option>
+                                    </select>
+                                </div>
+
+                                {shippingError && (
+                                    <div className="p-3 bg-red-100 text-red-700 text-sm">
+                                        {shippingError}
+                                    </div>
+                                )}
+
+                                {calculatingShipping && (
+                                    <div className="text-sm font-light tracking-wider animate-pulse">
+                                        Calculating shipping cost...
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -246,8 +358,10 @@ export default function CheckoutPage() {
                                     <span className="font-light">${(subTotal / 100).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between mb-2">
-                                    <span className="font-light">Shipping</span>
-                                    <span className="font-light">Free</span>
+                                    <span className="font-light">Shipping {calculatingShipping && '(calculating...)'}</span>
+                                    <span className="font-light">
+                                        {shippingCost ? `$${shippingCost.toFixed(2)}` : 'TBD'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between mb-2">
                                     <span className="font-light">Taxes (9.75%)</span>
