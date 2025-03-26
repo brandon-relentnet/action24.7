@@ -6,8 +6,8 @@ export async function GET(request, { params }) {
     const { orderId } = await params;
 
     try {
+        // Step 1: Get the order with line items
         const response = await client.orders.get({ orderId: orderId, includeRelatedObjects: true });
-
         const order = response.order;
 
         // Filter line items to only include those of type 'ITEM'
@@ -16,52 +16,160 @@ export async function GET(request, { params }) {
         // Extract catalog object IDs from the line items
         const catalogObjectIds = orderLineItems.map(item => item.catalogObjectId);
         if (!catalogObjectIds.length) {
-            return NextResponse.json({ objects: [] });
+            return NextResponse.json({ order });
         }
 
-        // Batch retrieve catalog objects along with their related objects using the catalog object IDs
-        const obtainObjectIds = await client.catalog.batchGet({
+        // Step 2: First catalog request to get catalog items and their variations
+        const catalogResponse = await client.catalog.batchGet({
             objectIds: catalogObjectIds,
             includeRelatedObjects: true,
         });
 
-        // Obtain the Object Ids from the response
-        const objectItemData = obtainObjectIds.relatedObjects.map(item => item.itemData) || [];
-        const objectIds = obtainObjectIds.relatedObjects.map(item => item.id) || [];
+        // Step 3: Extract all potential image IDs from both objects and related objects
+        const allImageIds = new Set();
+        const catalogItemMap = {};
 
-        // Batch retrieve the related objects using the object IDs
-        const obtainImageIds = await client.catalog.batchGet({
-            objectIds: objectIds,
-            includeRelatedObjects: true,
-        });
-        const imageIds = obtainImageIds.relatedObjects || [];
+        // Process main objects (typically variations)
+        if (catalogResponse.objects) {
+            catalogResponse.objects.forEach(obj => {
+                // Store by ID for later lookup
+                catalogItemMap[obj.id] = obj;
 
-        const imageMap = imageIds.reduce((map, obj) => {
-            if (obj.type === "IMAGE" && obj.imageData && obj.id) {
-                map[obj.id] = obj.imageData.url;
+                // Find image IDs in item variations
+                if (obj.type === 'ITEM_VARIATION' && obj.itemVariationData) {
+                    // Store parent item ID for lookup
+                    if (obj.itemVariationData.itemId) {
+                        catalogItemMap[obj.id] = {
+                            ...catalogItemMap[obj.id],
+                            parentItemId: obj.itemVariationData.itemId
+                        };
+                    }
+                }
+            });
+        }
+
+        // Process related objects (typically parent items)
+        if (catalogResponse.relatedObjects) {
+            catalogResponse.relatedObjects.forEach(obj => {
+                // Store by ID for later lookup
+                catalogItemMap[obj.id] = obj;
+
+                // Find image IDs in item data
+                if (obj.type === 'ITEM' && obj.itemData && obj.itemData.imageIds) {
+                    obj.itemData.imageIds.forEach(imageId => {
+                        allImageIds.add(imageId);
+                    });
+
+                    // Map parent items to their variations
+                    if (obj.itemData.variations) {
+                        obj.itemData.variations.forEach(variation => {
+                            if (variation.id) {
+                                // Link variation to parent
+                                catalogItemMap[variation.id] = {
+                                    ...catalogItemMap[variation.id],
+                                    parentItemId: obj.id,
+                                    parentItem: obj
+                                };
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        const imageIdsArray = [...allImageIds];
+
+        // Step 4: If we have image IDs, get the image objects
+        let imageMap = {};
+        if (imageIdsArray.length > 0) {
+            const imageResponse = await client.catalog.batchGet({
+                objectIds: imageIdsArray,
+            });
+
+            console.log(`Found ${imageResponse.objects ? imageResponse.objects.length : 0} image objects`);
+
+            // Create map of image IDs to image URLs
+            if (imageResponse.objects) {
+                imageResponse.objects.forEach(obj => {
+                    if (obj.type === 'IMAGE' && obj.imageData && obj.imageData.url) {
+                        imageMap[obj.id] = obj.imageData.url;
+                    }
+                });
             }
-            return map;
-        }, {});
+        }
 
-        const enrichedOrderItems = objectItemData.map(item => {
-            const imageIds = item.imageIds || [];
-            const imageUrl = imageIds.length ? imageMap[imageIds[0]] || null : null;
-            if (imageUrl === null) {
-                console.log("Missing image URL for item:", item, "imageId:", imageIds[0]);
+        // Step 5: Enhance line items with images and detailed info
+        const enrichedLineItems = orderLineItems.map(item => {
+            const enrichedItem = { ...item };
+
+            // Try to find parent item through the catalog item map
+            const catalogItem = catalogItemMap[item.catalogObjectId];
+            console.log(`Processing item: ${item.name} with catalogObjectId: ${item.catalogObjectId}`);
+
+            if (catalogItem) {
+                console.log(`Found catalog item with type: ${catalogItem.type}`);
+
+                // If it's a variation, get the parent item
+                if (catalogItem.type === 'ITEM_VARIATION' && catalogItem.parentItemId) {
+                    const parentItem = catalogItemMap[catalogItem.parentItemId];
+                    console.log(`Found parent item: ${parentItem ? 'Yes' : 'No'}`);
+
+                    if (parentItem && parentItem.itemData && parentItem.itemData.imageIds) {
+                        // Get the first image ID from the parent item
+                        const firstImageId = parentItem.itemData.imageIds[0];
+                        console.log(`Found image ID: ${firstImageId} for item: ${item.name}`);
+
+                        if (firstImageId && imageMap[firstImageId]) {
+                            enrichedItem.imageUrl = imageMap[firstImageId];
+                            console.log(`Added image URL: ${enrichedItem.imageUrl} to item: ${item.name}`);
+                        }
+
+                        // Add additional data from parent item
+                        if (parentItem.itemData) {
+                            enrichedItem.description = parentItem.itemData.description;
+                        }
+                    } else if (catalogItem.parentItem && catalogItem.parentItem.itemData && catalogItem.parentItem.itemData.imageIds) {
+                        // Alternative: try to get images from the parentItem object directly
+                        const firstImageId = catalogItem.parentItem.itemData.imageIds[0];
+                        if (firstImageId && imageMap[firstImageId]) {
+                            enrichedItem.imageUrl = imageMap[firstImageId];
+                        }
+                    }
+                }
+                // If it's already the parent item
+                else if (catalogItem.type === 'ITEM' && catalogItem.itemData && catalogItem.itemData.imageIds) {
+                    const firstImageId = catalogItem.itemData.imageIds[0];
+                    if (firstImageId && imageMap[firstImageId]) {
+                        enrichedItem.imageUrl = imageMap[firstImageId];
+                        console.log(`Added image URL: ${enrichedItem.imageUrl} to item: ${item.name}`);
+                    }
+
+                    // Add additional data
+                    if (catalogItem.itemData) {
+                        enrichedItem.description = catalogItem.itemData.description;
+                    }
+                }
+            } else {
+                console.log(`No catalog item found for ID: ${item.catalogObjectId}`);
             }
-            return { ...item, imageUrl };
+
+            return enrichedItem;
         });
 
-        console.log("enriched order items ***", enrichedOrderItems);
+        order.lineItems = enrichedLineItems;
+
+        console.log(`Enriched order:`, order);
+
+        // Return the order with the enriched line items
         return NextResponse.json({
             order: {
-                ...response.order,
-                lineItems: enrichedOrderItems
+                ...order,
+                lineItems: enrichedLineItems
             }
         });
 
-        
     } catch (error) {
+        console.error('Error retrieving order:', error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
