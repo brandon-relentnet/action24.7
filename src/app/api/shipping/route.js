@@ -89,9 +89,9 @@ function calculateShippingCost(distance, shippingMethod, quantity) {
 export async function POST(request) {
     try {
         const data = await request.json();
-        const { address, city, state, zipCode, country, shippingMethod, quantity = 1 } = data;
+        const { city, state, zipCode, country, shippingMethod, quantity = 1 } = data;
 
-        if (!address || !city || !state || !zipCode) {
+        if (!city || !state || !zipCode) {
             return NextResponse.json(
                 { error: 'Missing required shipping information' },
                 { status: 400 }
@@ -99,7 +99,7 @@ export async function POST(request) {
         }
 
         // Build full address for geocoding
-        const fullAddress = `${address}, ${city}, ${state} ${zipCode}, ${country || 'USA'}`;
+        const fullAddress = `${city}, ${state} ${zipCode}, ${country || 'USA'}`;
 
         // Get coordinates for the address
         const customerCoords = await getLatLong(fullAddress);

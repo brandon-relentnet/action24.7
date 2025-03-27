@@ -67,7 +67,7 @@ export async function submitPayment(sourceId, checkoutData) {
                                         displayName: customerDetails ? `${customerDetails.firstName} ${customerDetails.lastName}` : "Customer",
                                         emailAddress: customerDetails.email,
                                         address: {
-                                            addressLine1: customerDetails.address,
+                                            addressLine1: customerDetails.address1,
                                             postalCode: customerDetails.zipCode,
                                             locality: customerDetails.city,
                                             country: customerDetails.country,
@@ -76,7 +76,7 @@ export async function submitPayment(sourceId, checkoutData) {
                                             administrativeDistrictLevel1: customerDetails.state,
                                         },
                                     },
-                                    expectedShippedAt: "2025-03-28T23:22:31.004Z",
+                                    shippingType: methodName,
                                 },
                                 state: "PROPOSED",
                             },

@@ -19,6 +19,25 @@ if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
     envApplicationId = process.env.NEXT_PUBLIC_SANDBOX_SQUARE_APPLICATION_ID;
 }
 
+// Shipping rate constants (moved from server to client for local calculations)
+const SHIPPING_RATES = {
+    standard: {
+        baseRate: 5.99,
+        weightRate: 0.75, // per pound
+        distanceRate: 0.01, // per mile
+    },
+    express: {
+        baseRate: 9.99,
+        weightRate: 1.25,
+        distanceRate: 0.03,
+    },
+    overnight: {
+        baseRate: 19.99,
+        weightRate: 2,
+        distanceRate: 0.05,
+    }
+};
+
 export default function CheckoutPage() {
     const { orderId, orderItems, orderCalculation } = useSquareOrder();
     const router = useRouter();
@@ -30,11 +49,15 @@ export default function CheckoutPage() {
     const [shippingError, setShippingError] = useState('');
     const [paymentError, setPaymentError] = useState('');
 
+    // Add new state to store shipping data from API
+    const [shippingData, setShippingData] = useState(null);
+
     const [formData, setFormData] = useState({
         email: '',
         firstName: '',
         lastName: '',
-        address: '',
+        address1: '',
+        address2: '',
         city: '',
         state: '',
         zipCode: '',
@@ -63,29 +86,31 @@ export default function CheckoutPage() {
         return subTotal + shippingCostInCents + taxTotal;
     }, [subTotal, shippingCostInCents, taxTotal]);
 
-    // Calculate shipping when address is complete
+    // Calculate shipping when address is complete - only calls API when address changes
     useEffect(() => {
-        const { address, city, state, zipCode, country } = formData;
+        const { city, state, zipCode, country } = formData;
 
         // Check if all shipping fields are filled
-        const addressComplete = address && city && state && zipCode;
+        const addressComplete = city && state && zipCode;
 
         if (addressComplete) {
-            calculateShipping();
+            fetchShippingData();
         }
-    }, [formData.address, formData.city, formData.state, formData.zipCode, formData.country, shippingMethod]);
+    }, [formData.city, formData.state, formData.zipCode, formData.country]);
 
+    // Update shipping cost locally when shipping method changes
     useEffect(() => {
-        if (shippingDistance !== null) {
-            calculateShipping();
+        if (shippingData) {
+            calculateLocalShippingCost();
         }
-    }, [shippingMethod]);
+    }, [shippingMethod, shippingData]);
 
-    const calculateShipping = async () => {
-        const { address, city, state, zipCode, country } = formData;
+    // Fetch shipping data from API (only when address changes)
+    const fetchShippingData = async () => {
+        const { city, state, zipCode, country } = formData;
 
         // Validate address fields
-        if (!address || !city || !state || !zipCode) {
+        if (!city || !state || !zipCode) {
             return;
         }
 
@@ -99,12 +124,11 @@ export default function CheckoutPage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    address,
                     city,
                     state,
                     zipCode,
                     country,
-                    shippingMethod,
+                    shippingMethod: 'standard', // We'll calculate other methods locally
                     quantity: orderItems.length || 1
                 }),
             });
@@ -115,8 +139,15 @@ export default function CheckoutPage() {
                 throw new Error(data.error || 'Failed to calculate shipping');
             }
 
-            setShippingCost(data.shippingCost);
+            // Store the shipping data
+            setShippingData({
+                distance: data.distance,
+                quantity: orderItems.length || 1
+            });
+
+            // Set initial shipping cost and distance
             setShippingDistance(data.distance);
+            setShippingCost(data.shippingCost);
         } catch (error) {
             console.error('Error calculating shipping:', error);
             setShippingError(error.message || 'Error calculating shipping cost');
@@ -125,10 +156,28 @@ export default function CheckoutPage() {
         }
     };
 
+    // Calculate shipping cost locally based on shipping method
+    const calculateLocalShippingCost = () => {
+        if (!shippingData) return;
+
+        const { distance, quantity } = shippingData;
+        const rate = SHIPPING_RATES[shippingMethod];
+
+        // Calculate total weight (assuming 1 pound per item)
+        const totalWeight = 1 * quantity;
+
+        // Formula: Base rate + (weight cost) + (distance cost)
+        const cost = rate.baseRate +
+            (totalWeight * rate.weightRate) +
+            (distance * rate.distanceRate);
+
+        setShippingCost(parseFloat(cost.toFixed(2)));
+    };
+
     // Validate the form
     const isFormValid = () => {
-        const { email, firstName, lastName, address, city, state, zipCode } = formData;
-        return email && firstName && lastName && address && city && state && zipCode && shippingCost > 0 && !calculatingShipping;
+        const { email, firstName, lastName, address1, city, state, zipCode } = formData;
+        return email && firstName && lastName && address1 && city && state && zipCode && shippingCost > 0 && !calculatingShipping;
     };
 
     const handlePayment = async (token) => {
@@ -178,6 +227,7 @@ export default function CheckoutPage() {
                     orderItems,
                     customerName: `${formData.firstName} ${formData.lastName}`,
                     customerEmail: formData.email,
+                    shippingAddress: `${formData.address1}, ${formData.address2}, ${formData.city}, ${formData.state} ${formData.zipCode}, ${formData.country}`,
                     totalAmount,
                     currency,
                     orderDate: new Date().toISOString(),
@@ -198,6 +248,11 @@ export default function CheckoutPage() {
         }
     };
 
+    // Define required field marker component
+    const RequiredMark = () => (
+        <span className="text-red-500 ml-1">*</span>
+    );
+    
     return (
         <div className="min-h-screen bg-white pt-32 pb-24 px-6 md:px-12">
             <div className="max-w-4xl mx-auto">
@@ -218,10 +273,13 @@ export default function CheckoutPage() {
                         {/* Customer Information */}
                         <div>
                             <h2 className="text-xl font-light tracking-wide mb-6 uppercase">Customer Information</h2>
+                            <p className="text-sm text-gray-500 mb-4">Fields marked with <span className="text-red-500">*</span> are required</p>
 
                             <div className="space-y-4 mb-8">
                                 <div>
-                                    <label htmlFor="email" className="block text-sm uppercase tracking-wider mb-2">Email</label>
+                                    <label htmlFor="email" className="block text-sm uppercase tracking-wider mb-2">
+                                        Email<RequiredMark />
+                                    </label>
                                     <input
                                         type="email"
                                         id="email"
@@ -235,7 +293,9 @@ export default function CheckoutPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="firstName" className="block text-sm uppercase tracking-wider mb-2">First Name</label>
+                                        <label htmlFor="firstName" className="block text-sm uppercase tracking-wider mb-2">
+                                            First Name<RequiredMark />
+                                        </label>
                                         <input
                                             type="text"
                                             id="firstName"
@@ -247,7 +307,9 @@ export default function CheckoutPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="lastName" className="block text-sm uppercase tracking-wider mb-2">Last Name</label>
+                                        <label htmlFor="lastName" className="block text-sm uppercase tracking-wider mb-2">
+                                            Last Name<RequiredMark />
+                                        </label>
                                         <input
                                             type="text"
                                             id="lastName"
@@ -265,12 +327,14 @@ export default function CheckoutPage() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label htmlFor="address" className="block text-sm uppercase tracking-wider mb-2">Address</label>
+                                    <label htmlFor="address1" className="block text-sm uppercase tracking-wider mb-2">
+                                        Address 1<RequiredMark />
+                                    </label>
                                     <input
                                         type="text"
-                                        id="address"
-                                        name="address"
-                                        value={formData.address}
+                                        id="address1"
+                                        name="address1"
+                                        value={formData.address1}
                                         onChange={handleInputChange}
                                         className="w-full p-3 border border-gray-200 focus:outline-none focus:border-black"
                                         required
@@ -278,7 +342,23 @@ export default function CheckoutPage() {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="city" className="block text-sm uppercase tracking-wider mb-2">City</label>
+                                    <label htmlFor="address2" className="block text-sm uppercase tracking-wider mb-2">
+                                        Address 2
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="address2"
+                                        name="address2"
+                                        value={formData.address2}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 border border-gray-200 focus:outline-none focus:border-black"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="city" className="block text-sm uppercase tracking-wider mb-2">
+                                        City<RequiredMark />
+                                    </label>
                                     <input
                                         type="text"
                                         id="city"
@@ -292,7 +372,9 @@ export default function CheckoutPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="state" className="block text-sm uppercase tracking-wider mb-2">State</label>
+                                        <label htmlFor="state" className="block text-sm uppercase tracking-wider mb-2">
+                                            State<RequiredMark />
+                                        </label>
                                         <input
                                             type="text"
                                             id="state"
@@ -304,7 +386,9 @@ export default function CheckoutPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="zipCode" className="block text-sm uppercase tracking-wider mb-2">Zip Code</label>
+                                        <label htmlFor="zipCode" className="block text-sm uppercase tracking-wider mb-2">
+                                            Zip Code<RequiredMark />
+                                        </label>
                                         <input
                                             type="text"
                                             id="zipCode"
@@ -318,7 +402,9 @@ export default function CheckoutPage() {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="country" className="block text-sm uppercase tracking-wider mb-2">Country</label>
+                                    <label htmlFor="country" className="block text-sm uppercase tracking-wider mb-2">
+                                        Country<RequiredMark />
+                                    </label>
                                     <select
                                         id="country"
                                         name="country"
@@ -335,33 +421,6 @@ export default function CheckoutPage() {
                                         <option value="JP">Japan</option>
                                     </select>
                                 </div>
-
-                                <div>
-                                    <label htmlFor="shippingMethod" className="block text-sm uppercase tracking-wider mb-2">Shipping Method</label>
-                                    <select
-                                        id="shippingMethod"
-                                        name="shippingMethod"
-                                        value={shippingMethod}
-                                        onChange={(e) => setShippingMethod(e.target.value)}
-                                        className="w-full p-3 border border-gray-200 focus:outline-none focus:border-black"
-                                    >
-                                        <option value="standard">Standard (3-5 business days)</option>
-                                        <option value="express">Express (2 business days)</option>
-                                        <option value="overnight">Overnight (Next business day)</option>
-                                    </select>
-                                </div>
-
-                                {shippingError && (
-                                    <div className="p-3 bg-red-100 text-red-700 text-sm">
-                                        {shippingError}
-                                    </div>
-                                )}
-
-                                {calculatingShipping && (
-                                    <div className="text-sm font-light tracking-wider animate-pulse">
-                                        Calculating shipping cost...
-                                    </div>
-                                )}
                             </div>
                         </div>
 
@@ -402,6 +461,37 @@ export default function CheckoutPage() {
                                 )}
                             </div>
 
+                            <h2 className="text-xl font-light tracking-wide mb-6 uppercase">Shipping</h2>
+
+                            <div className="mb-8">
+                                <div>
+                                    <label htmlFor="shippingMethod" className="block text-sm uppercase tracking-wider mb-2">Shipping Method</label>
+                                    <select
+                                        id="shippingMethod"
+                                        name="shippingMethod"
+                                        value={shippingMethod}
+                                        onChange={(e) => setShippingMethod(e.target.value)}
+                                        className="w-full p-3 border border-gray-200 focus:outline-none focus:border-black"
+                                    >
+                                        <option value="standard">Standard (4-7 business days)</option>
+                                        <option value="express">Express (2-3 business days)</option>
+                                        <option value="overnight">Overnight (Next business day)</option>
+                                    </select>
+                                </div>
+
+                                {shippingError && (
+                                    <div className="p-3 bg-red-100 text-red-700 text-sm">
+                                        {shippingError}
+                                    </div>
+                                )}
+
+                                {calculatingShipping && (
+                                    <div className="text-sm font-light tracking-wider animate-pulse">
+                                        Calculating shipping cost...
+                                    </div>
+                                )}
+                            </div>
+
                             <h2 className="text-xl font-light tracking-wide mb-6 uppercase">Payment</h2>
 
                             <div className="mb-8">
@@ -411,35 +501,45 @@ export default function CheckoutPage() {
                                     </div>
                                 )}
 
-                                <PaymentForm
-                                    applicationId={envApplicationId}
-                                    locationId={envLocationId}
-                                    cardTokenizeResponseReceived={handlePayment}
-                                    createPaymentRequest={() => ({
-                                        countryCode: 'US',
-                                        currencyCode: 'USD',
-                                        total: {
-                                            amount: totalAmount, // totalAmount is already in cents
-                                            label: 'Total',
-                                        }
-                                    })}
-                                >
-                                    <CreditCard
-                                        buttonProps={{
-                                            isLoading: loading,
-                                            css: {
-                                                backgroundColor: '#000',
-                                                fontSize: '14px',
-                                                fontWeight: '300',
-                                                letterSpacing: '0.05em',
-                                                color: 'white',
-                                                '&:hover': {
-                                                    backgroundColor: '#333'
-                                                }
+                                {!isFormValid() ? (
+                                    <div className="relative inset-0 backdrop-blur-sm z-10 flex items-center justify-center">
+                                        <div className="bg-black/80 text-white p-4 rounded text-center max-w-xs">
+                                            <p className="font-light tracking-wider">
+                                                Please complete all required fields to proceed with payment
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <PaymentForm
+                                        applicationId={envApplicationId}
+                                        locationId={envLocationId}
+                                        cardTokenizeResponseReceived={handlePayment}
+                                        createPaymentRequest={() => ({
+                                            countryCode: 'US',
+                                            currencyCode: 'USD',
+                                            total: {
+                                                amount: totalAmount,
+                                                label: 'Total',
                                             }
-                                        }}
-                                    />
-                                </PaymentForm>
+                                        })}
+                                    >
+                                        <CreditCard
+                                            buttonProps={{
+                                                isLoading: loading,
+                                                css: {
+                                                    backgroundColor: '#000',
+                                                    fontSize: '14px',
+                                                    fontWeight: '300',
+                                                    letterSpacing: '0.05em',
+                                                    color: 'white',
+                                                    '&:hover': {
+                                                        backgroundColor: '#333'
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </PaymentForm>
+                                )}
 
                                 {loading && (
                                     <div className="mt-4 text-center">
