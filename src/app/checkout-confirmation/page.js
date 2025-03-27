@@ -54,7 +54,7 @@ export default function CheckoutConfirmationPage() {
         orderItems,
         customerName,
         customerEmail,
-        totalAmount,
+        totalAmountCents,
         currency,
         orderDate
     } = orderDetails;
@@ -99,7 +99,7 @@ export default function CheckoutConfirmationPage() {
                                 <span className="text-gray-800 font-medium">Payment Method:</span> Credit Card
                             </p>
                             <p className="text-gray-600 mb-1">
-                                <span className="text-gray-800 font-medium">Total:</span> ${(totalAmount / 100).toFixed(2)} {currency}
+                                <span className="text-gray-800 font-medium">Total:</span> ${(totalAmountCents / 100).toFixed(2)} {currency}
                             </p>
                         </div>
                     </div>
@@ -117,7 +117,7 @@ export default function CheckoutConfirmationPage() {
 
                         <div className="mt-4 pt-4 border-t border-gray-200 text-right">
                             <p className="text-lg font-light">
-                                Total: ${(totalAmount / 100).toFixed(2)} {currency}
+                                Total: ${(totalAmountCents / 100).toFixed(2)} {currency}
                             </p>
                         </div>
                     </div>
