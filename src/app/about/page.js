@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function AboutPage() {
     // Team member data
     const teamMembers = [
         {
             name: "Shane VanBoening",
-            image: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?ixlib=rb-4.0.3", // Placeholder, replace with actual image
+            image: "/images/shane-vanboening.jpg", // Updated to local image path
             role: "Professional Athlete",
             achievements: [
                 "5x US Open Champion",
@@ -19,8 +20,8 @@ export default function AboutPage() {
             ]
         },
         {
-            name: "Skyler Woodward",
-            image: "https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?ixlib=rb-4.0.3", // Placeholder, replace with actual image
+            name: "Sky Woodward", // Updated name from "Skyler" to "Sky"
+            image: "/images/sky-woodward.jpg", // Updated to local image path
             role: "Professional Athlete",
             achievements: [
                 "2019 Derby City Classic 9-ball Champion",
@@ -31,8 +32,8 @@ export default function AboutPage() {
             ]
         },
         {
-            name: "Nick De Leon",
-            image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3", // Placeholder, replace with actual image
+            name: "Billy Thorpe", // Updated from "Nick De Leon" to "Billy Thorpe"
+            image: "/images/billy-thorpe.jpg", // Updated to local image path
             role: "Professional Athlete",
             achievements: [
                 "2025 24th place in banks at Derby City Classic",
@@ -78,9 +79,12 @@ export default function AboutPage() {
                         {teamMembers.map((member, index) => (
                             <div key={index} className="flex flex-col">
                                 <div className="aspect-square overflow-hidden mb-6">
-                                    <img
+                                    {/* Switched to Next.js Image component for better performance */}
+                                    <Image
                                         src={member.image}
                                         alt={member.name}
+                                        width={500}
+                                        height={500}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
@@ -101,7 +105,7 @@ export default function AboutPage() {
                     </div>
 
                     <div className="text-center mt-16 text-gray-600">
-                        <p>* New team member will be added April 1st, 2025</p>
+                        <p>* New team members will be added upon request.</p>
                     </div>
                 </div>
             </section>
