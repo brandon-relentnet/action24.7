@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 function slugify(text) {
     return text
@@ -14,6 +15,9 @@ function slugify(text) {
 }
 
 export default function CatalogPage() {
+    const searchParams = useSearchParams();
+    const categoryParam = searchParams.get('category');
+
     const [catalog, setCatalog] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,6 +30,11 @@ export default function CatalogPage() {
                 const data = await res.json();
                 setCatalog(data.objects || data);
                 setCategories(data.categories);
+
+                // Set the selected category from URL parameter if it exists
+                if (categoryParam) {
+                    setSelectedCategory(categoryParam);
+                }
             } catch (err) {
                 console.error('Error fetching catalog:', err);
             } finally {
@@ -33,7 +42,7 @@ export default function CatalogPage() {
             }
         }
         fetchCatalog();
-    }, []);
+    }, [categoryParam]);
 
     const filteredCatalog = selectedCategory === 'all'
         ? catalog
