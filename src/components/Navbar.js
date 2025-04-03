@@ -1,15 +1,33 @@
 "use client";
-
-import NavbarItem from "./NavbarItem";
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import NavbarItem from "./NavbarItem";
+import NavDropdown from "./NavDropdown";
 
 export default function Navbar() {
     const [menuOpen, setMenuOpen] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const toggleMenu = () => {
         setMenuOpen(!menuOpen);
     };
+
+    // Fetch categories for the dropdown
+    useEffect(() => {
+        async function fetchCategories() {
+            try {
+                const res = await fetch('/api/catalog');
+                const data = await res.json();
+                setCategories(data.categories || []);
+            } catch (err) {
+                console.error('Error fetching categories:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchCategories();
+    }, []);
 
     return (
         <>
@@ -21,13 +39,20 @@ export default function Navbar() {
                             ACTION 24/7
                         </Link>
                     </div>
-
                     {/* Middle Section - Navigation */}
                     <div className="hidden md:flex items-center justify-center space-x-12">
-                        <NavbarItem href='/collection' label='Collection' />
+                        <NavDropdown
+                            label="Collection"
+                            mainLink="/collection"
+                            items={categories.map(cat => ({
+                                id: cat.id,
+                                name: cat.categoryData?.name || 'Unnamed Category',
+                                href: `/collection?category=${cat.id}`
+                            }))}
+                            loading={loading}
+                        />
                         <NavbarItem href='/about' label='About' />
                     </div>
-
                     {/* Right Section - Cart */}
                     <div className="flex-1 flex justify-end">
                         <Link href="/cart" className="flex items-center relative group">
@@ -36,7 +61,6 @@ export default function Navbar() {
                             </svg>
                             <span className="absolute -bottom-1 left-0 w-full h-px bg-black scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                         </Link>
-
                         {/* Mobile Menu Button */}
                         <button onClick={toggleMenu} className="ml-6 md:hidden">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -46,7 +70,6 @@ export default function Navbar() {
                     </div>
                 </div>
             </nav>
-
             {/* Mobile Menu Overlay */}
             <div
                 className={`fixed inset-0 bg-white z-40 transition-transform duration-500 ease-in-out transform ${menuOpen ? 'translate-x-0' : 'translate-x-full'
@@ -62,9 +85,23 @@ export default function Navbar() {
                         </svg>
                     </button>
                 </div>
-
                 <div className="flex flex-col px-8 py-12 space-y-8">
-                    <NavbarItem href='/collection' label='Collection' onClick={toggleMenu} />
+                    <div className="space-y-8">
+                        <NavbarItem href='/collection' label='All Collection' onClick={toggleMenu} />
+
+                        {!loading && categories.length > 0 && (
+                            <div className="pl-4 border-l border-gray-200 space-y-6">
+                                {categories.map(category => (
+                                    <NavbarItem
+                                        key={category.id}
+                                        href={`/collection?category=${category.id}`}
+                                        label={category.categoryData?.name || 'Unnamed Category'}
+                                        onClick={toggleMenu}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <NavbarItem href='/about' label='About' onClick={toggleMenu} />
                     <NavbarItem href='/cart' label='Cart' onClick={toggleMenu} />
                 </div>
