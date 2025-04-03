@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -14,7 +14,19 @@ function slugify(text) {
         .replace(/\-\-+/g, '-');
 }
 
-export default function CatalogPage() {
+// Loading component for Suspense fallback
+function LoadingComponent() {
+    return (
+        <div className="h-screen flex items-center justify-center bg-white">
+            <div className="animate-pulse text-black font-light tracking-widest uppercase">
+                Loading collection...
+            </div>
+        </div>
+    );
+}
+
+// Inner component that uses the search params
+function CatalogContent() {
     const searchParams = useSearchParams();
     const categoryParam = searchParams.get('category');
 
@@ -50,13 +62,7 @@ export default function CatalogPage() {
             item.itemData?.categories?.some(category => category.id === selectedCategory)
         );
 
-    if (loading) return (
-        <div className="h-screen flex items-center justify-center bg-white">
-            <div className="animate-pulse text-black font-light tracking-widest uppercase">
-                Loading collection...
-            </div>
-        </div>
-    );
+    if (loading) return <LoadingComponent />;
 
     return (
         <div className="min-h-screen px-6 py-12 md:px-12 lg:px-16 max-w-[1920px] mx-auto">
@@ -148,5 +154,14 @@ export default function CatalogPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+// Main component with Suspense boundary
+export default function CatalogPage() {
+    return (
+        <Suspense fallback={<LoadingComponent />}>
+            <CatalogContent />
+        </Suspense>
     );
 }
