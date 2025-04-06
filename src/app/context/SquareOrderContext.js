@@ -65,10 +65,25 @@ export function SquareOrderProvider({ children }) {
         }
     };
 
-    const addItemToOrder = async (item) => {
+    const addItemToOrder = async (product, selectedVariation) => {
         setIsLoading(true);
         setError(null);
         try {
+            // Use the selected variation if provided, or default to the first one
+            const variation = selectedVariation || product.itemData?.variations?.[0];
+
+            if (!variation) {
+                throw new Error("No variation available for this product");
+            }
+
+            // Prepare the item data with the selected variation
+            const item = {
+                catalogObjectId: variation.id,
+                name: product.itemData?.name,
+                variationName: variation.itemVariationData?.name || '',
+                imageUrl: product.imageUrl
+            };
+
             if (!orderId) {
                 // Create new order if none exists.
                 const data = await apiCall("/api/orders/create", {

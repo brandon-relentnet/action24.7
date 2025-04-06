@@ -72,8 +72,65 @@ function ProductImage({ product, toggleFullscreen }) {
     );
 }
 
+// Size selector component
+function SizeSelector({ variations, selectedVariation, onVariationChange }) {
+    if (!variations || variations.length <= 1) return null;
+
+    return (
+        <div className="mb-8">
+            <div className="flex justify-between items-center mb-2">
+                <label htmlFor="size-select" className="text-sm uppercase tracking-wider font-light">
+                    Size
+                </label>
+                {selectedVariation && (
+                    <span className="text-sm text-gray-500">
+                        {selectedVariation.itemVariationData?.name}
+                    </span>
+                )}
+            </div>
+            <select
+                id="size-select"
+                value={selectedVariation?.id || ''}
+                onChange={(e) => {
+                    const variationId = e.target.value;
+                    const newVariation = variations.find(v => v.id === variationId);
+                    onVariationChange(newVariation);
+                }}
+                className="w-full py-3 px-4 border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+            >
+                {variations.map((variation) => (
+                    <option key={variation.id} value={variation.id}>
+                        {variation.itemVariationData?.name}
+                    </option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
 // Component for displaying product details and action buttons
-function ProductDetails({ product, price, currency, handleAddToOrder, isInOrder, addingToCart, scrollToDetails }) {
+function ProductDetails({
+    product,
+    selectedVariation,
+    onVariationChange,
+    handleAddToOrder,
+    isInOrder,
+    addingToCart,
+    scrollToDetails
+}) {
+    // Get all variations from the product
+    const variations = product.itemData?.variations || [];
+
+    // Get pricing details from the selected variation
+    const priceMoney = selectedVariation?.itemVariationData?.priceMoney ||
+        selectedVariation?.itemVariationData?.defaultUnitCost;
+    const price = priceMoney ? (priceMoney.amount / 100).toFixed(2) : 'N/A';
+    const currency = priceMoney?.currency || 'USD';
+
+    // Check if selected variation is in stock
+    const inStock = selectedVariation?.itemVariationData?.inventoryCount === undefined ||
+        selectedVariation?.itemVariationData?.inventoryCount > 0;
+
     return (
         <div className="flex flex-col">
             <h1 className="text-3xl font-light tracking-wide mb-4">{product.itemData?.name}</h1>
@@ -84,6 +141,14 @@ function ProductDetails({ product, price, currency, handleAddToOrder, isInOrder,
                     <span className="text-gray-500">Price on request</span>
                 )}
             </div>
+
+            {/* Size Selector */}
+            <SizeSelector
+                variations={variations}
+                selectedVariation={selectedVariation}
+                onVariationChange={onVariationChange}
+            />
+
             <div className="prose prose-sm mb-8 text-gray-700">
                 {product.itemData?.descriptionHtml ? (
                     <div dangerouslySetInnerHTML={{ __html: product.itemData.descriptionHtml }} />
@@ -94,15 +159,24 @@ function ProductDetails({ product, price, currency, handleAddToOrder, isInOrder,
             <div className="mt-auto space-y-4">
                 <button
                     onClick={handleAddToOrder}
-                    disabled={isInOrder || addingToCart}
-                    className={`w-full py-3 uppercase tracking-wider text-sm font-light transition-all duration-300 ${addingToCart
-                            ? "bg-gray-700 text-white"
-                            : isInOrder
-                                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                : "bg-black text-white hover:bg-gray-900"
+                    disabled={isInOrder || addingToCart || !inStock}
+                    className={`w-full py-3 uppercase tracking-wider text-sm font-light transition-all duration-300 ${!inStock
+                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                            : addingToCart
+                                ? "bg-gray-700 text-white"
+                                : isInOrder
+                                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                    : "bg-black text-white hover:bg-gray-900"
                         }`}
                 >
-                    {addingToCart ? "Adding to Cart..." : isInOrder ? "Already in Cart" : "Add to Cart"}
+                    {!inStock
+                        ? "Out of Stock"
+                        : addingToCart
+                            ? "Adding to Cart..."
+                            : isInOrder
+                                ? "Already in Cart"
+                                : "Add to Cart"
+                    }
                 </button>
                 <button
                     onClick={scrollToDetails}
@@ -183,18 +257,28 @@ export default function ProductPage() {
     const { slugAndId } = useParams();
     const [loading, setLoading] = useState(true);
     const [product, setProduct] = useState(null);
+    const [selectedVariation, setSelectedVariation] = useState(null);
     const { addItemToOrder, orderItems, isLoading } = useSquareOrder();
     const [openAttribute, setOpenAttribute] = useState(null);
     const detailsRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [addingToCart, setAddingToCart] = useState(false);
 
+    // Set the selected variation when product loads
+    useEffect(() => {
+        if (product && product.itemData?.variations?.length) {
+            setSelectedVariation(product.itemData.variations[0]);
+        }
+    }, [product]);
+
     // Handler for adding the product to the order
     const handleAddToOrder = async () => {
-        if (isInOrder || isLoading) return;
+        if (!selectedVariation || isInOrder || isLoading) return;
+
         setAddingToCart(true);
         try {
-            await addItemToOrder(product);
+            // Pass the selected variation to the order context
+            await addItemToOrder(product, selectedVariation);
             window.location.href = '/cart';
         } catch (error) {
             console.error('Error adding to order:', error);
@@ -203,11 +287,10 @@ export default function ProductPage() {
         }
     };
 
-    // Check if the product is already in the cart/order
-    const isInOrder = product && orderItems.some(item => {
-        const variation = product.itemData?.variations?.[0];
-        return item.catalogObjectId === variation?.id;
-    });
+    // Check if the selected variation is already in the cart/order
+    const isInOrder = selectedVariation && orderItems.some(item =>
+        item.catalogObjectId === selectedVariation.id
+    );
 
     // Smooth scroll to product details section
     const scrollToDetails = () => {
@@ -265,12 +348,6 @@ export default function ProductPage() {
         );
     }
 
-    // Get pricing details from the first variation
-    const variation = product.itemData?.variations?.[0];
-    const priceMoney = variation?.itemVariationData?.priceMoney || variation?.itemVariationData?.defaultUnitCost;
-    const price = priceMoney ? (priceMoney.amount / 100).toFixed(2) : 'N/A';
-    const currency = priceMoney?.currency || 'USD';
-
     return (
         <div className="min-h-screen bg-white text-black py-12">
             {isFullscreen && product.imageUrl && (
@@ -289,8 +366,8 @@ export default function ProductPage() {
                     <ProductImage product={product} toggleFullscreen={toggleFullscreen} />
                     <ProductDetails
                         product={product}
-                        price={price}
-                        currency={currency}
+                        selectedVariation={selectedVariation}
+                        onVariationChange={setSelectedVariation}
                         handleAddToOrder={handleAddToOrder}
                         isInOrder={isInOrder}
                         addingToCart={addingToCart}

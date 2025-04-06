@@ -248,7 +248,7 @@ const OrderSummary = ({
                 </span>
             </div>
             <div className="flex justify-between mb-2">
-                <span className="font-light">Taxes (9.75%)</span>
+                <span className="font-light">Taxes (8.25%)</span>
                 <span className="font-light">
                     ${(taxTotalCents / 100).toFixed(2)}
                 </span>
@@ -262,7 +262,7 @@ const OrderSummary = ({
 
             {shippingDistance !== null && (
                 <div className="mt-4 text-xs text-gray-500">
-                    <p>Shipping from: Baton Rouge, LA (approx. {shippingDistance} miles)</p>
+                    <p>Shipping from: Lubbock, TX (approx. {shippingDistance} miles)</p>
                 </div>
             )}
         </div>
@@ -433,7 +433,7 @@ export default function CheckoutPage() {
     }, [shippingCost]);
 
     const taxTotalCents = useMemo(() => {
-        const TAX_RATE = 0.0975; // 9.75%
+        const TAX_RATE = 0.0825; // 8.25%
         return computeTaxCents(subTotalCents + shippingCostCents, TAX_RATE);
     }, [subTotalCents, shippingCostCents]);
 

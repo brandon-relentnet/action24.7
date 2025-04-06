@@ -28,7 +28,7 @@ export default function CartPage() {
     const currency = orderCalculation?.order?.subTotal?.currency || 'USD';
 
     // Calculate tax and total amounts in cents
-    const taxTotal = subTotal * 0.0975;
+    const taxTotal = subTotal * 0.0825;
     const totalAmount = subTotal + taxTotal;
 
     // Helper component for rendering each cart item
@@ -40,7 +40,11 @@ export default function CartPage() {
             name,
             description,
             imageUrl,
+            metadata = {}
         } = item;
+
+        // Get variation name from metadata if available
+        const variationName = metadata?.variationName || '';
 
         const quantity = parseInt(qty) || 1;
         // Price in dollars (as a number)
@@ -60,7 +64,7 @@ export default function CartPage() {
                         </a>
                     ) : (
                         <div className="w-24 h-full bg-gray-100 flex items-center justify-center mx-auto">
-                                <p className="text-gray-400 text-xs">No image</p>
+                            <p className="text-gray-400 text-xs">No image</p>
                         </div>
                     )}
                 </div>
@@ -68,6 +72,14 @@ export default function CartPage() {
                 {/* Product Details */}
                 <div className="sm:w-2/4">
                     <a href={href} className="text-lg font-light mb-1">{name || 'Unknown Item'}</a>
+
+                    {/* Display Size Variation */}
+                    {variationName && (
+                        <p className="text-sm text-gray-600 mt-1 mb-2">
+                            Size: <span className="font-medium">{variationName}</span>
+                        </p>
+                    )}
+
                     <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                         {description || 'No description available'}
                     </p>
@@ -178,7 +190,7 @@ export default function CartPage() {
                                 <span className="font-light">${(subTotal / 100).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between py-4 border-b border-gray-200">
-                                <span className="font-light">Taxes (9.75%)</span>
+                                <span className="font-light">Taxes (8.25%)</span>
                                 <span className="font-light">${(taxTotal / 100).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between py-4 text-lg">

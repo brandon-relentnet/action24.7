@@ -6,8 +6,12 @@ const CheckoutItem = ({ item }) => {
         name,
         description,
         imageUrl,
+        metadata = {},
         currency,
     } = item;
+
+    // Get variation name from metadata if available
+    const variationName = metadata?.variationName || '';
 
     const quantity = parseInt(qty) || 1;
     // Price in dollars (as a number)
@@ -31,6 +35,12 @@ const CheckoutItem = ({ item }) => {
             {/* Product Details */}
             <div className="sm:w-2/4">
                 <h2 className="text-lg font-light mb-1">{name || 'Unknown Item'}</h2>
+                {/* Display Size Variation */}
+                {variationName && (
+                    <p className="text-xs text-gray-500 mt-1">
+                        Size: <span className="font-medium">{variationName}</span>
+                    </p>
+                )}
                 <p className="text-sm text-gray-600 mb-4 truncate">
                     {description || 'No description available'}
                 </p>

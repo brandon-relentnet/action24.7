@@ -29,7 +29,7 @@ export default function Home() {
     {
       title: "Precision in Motion",
       subtitle: "Spring Collection 2025",
-      description: "High-performance apparel endorsed by Shane VanBoening and Sky Woodward. Designed for those who demand excellence at every shot.",
+      description: "High-performance apparel endorsed by Shane, Sky, and Billy. Designed for those who demand excellence at every shot.",
       image: onlineImages.heroSlide1,
       cta: "Shop Now",
       link: "/collection"

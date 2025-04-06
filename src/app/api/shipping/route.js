@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 // Origin location (Baton Rouge, LA)
 const ORIGIN = {
     address: "Baton Rouge, LA, USA",
-    lat: 30.4515,
-    lng: -91.1871
+    lat: 33.5778,
+    lng: -101.8553
 };
 
 // Shipping rate constants

@@ -15,10 +15,10 @@ export async function POST(request, { params }) {
 
         switch (action) {
             case 'add_item':
-                // Add a new item to the order
-                const variation = itemData.itemData?.variations?.[0];
-                if (!variation || !variation.id) {
-                    throw new Error('Invalid item variation data');
+                // Add a new item to the order with the selected variation
+                // We now expect itemData to contain catalogObjectId which is the ID of the selected variation
+                if (!itemData.catalogObjectId) {
+                    throw new Error('Invalid item variation data - no catalogObjectId provided');
                 }
 
                 response = await client.orders.update({
@@ -28,9 +28,14 @@ export async function POST(request, { params }) {
                         locationId,
                         lineItems: [
                             {
-                                catalogObjectId: variation.id,
+                                catalogObjectId: itemData.catalogObjectId,
                                 quantity: (itemData.quantity || 1).toString(),
                                 itemType: itemData.type || 'ITEM',
+                                // Add metadata for the variation name so we can display it in the cart
+                                metadata: {
+                                    variationName: itemData.variationName || '',
+                                    imageUrl: itemData.imageUrl || ''
+                                }
                             }
                         ],
                         version: versionId
