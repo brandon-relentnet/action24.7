@@ -90,7 +90,7 @@ export default function Navbar() {
                         <NavbarItem href='/collection' label='All Collection' onClick={toggleMenu} />
 
                         {!loading && categories.length > 0 && (
-                            <div className="pl-4 border-l border-gray-200 space-y-6">
+                            <div className="pl-4 py-2 border-l border-gray-200 space-y-6 flex-col flex">
                                 {categories.map(category => (
                                     <NavbarItem
                                         key={category.id}
